@@ -1,0 +1,20 @@
+# Vivado generated files
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+
+# Vivado temporary files
+*.jou
+*.log
+*.str
+*.backup.log
+
+# Simulation generated
+sim/
+xsim.dir/
+
+# OS files
+.DS_Store
+Thumbs.db
