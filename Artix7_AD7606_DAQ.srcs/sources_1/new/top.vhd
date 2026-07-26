@@ -53,7 +53,7 @@ end top;
 
 architecture Behavioral of top is
  --uart_rx define
- signal rx_rst    : std_logic := '1';
+ signal rx_rst    : std_logic := '0';
  signal rx_data   : std_logic_vector(7 downto 0);
  signal rx_parity : std_logic;
  signal rx_done   : std_logic;
@@ -68,8 +68,10 @@ signal test_valid : std_logic;
 signal cnt : integer range 0 to 50000000:=0;
 
 signal led_reg : std_logic := '0';
+signal rx_debug : std_logic;
 
 begin
+led<=rx_done;
  process(clk)
   begin
    if rising_edge(clk) then
@@ -78,7 +80,6 @@ begin
     end if;
    end if;
  end process;
- led<=led_reg;
  
  --uart_rx port
  u_uart_rx:entity work.uart_rx
@@ -90,6 +91,7 @@ begin
   port map(
    clk=>clk,
    rx_rst=>rx_rst,
+   rx_debug=>rx_debug,
    rx=>uart_rx,
    rx_data=>rx_data,
    rx_parity=>rx_parity,
@@ -112,6 +114,5 @@ begin
    --data_in   =>test_data,
    --data_valid=>test_valid,
    tx        =>uart_tx);
-   --rx        =>uart_rx);
 
 end Behavioral;

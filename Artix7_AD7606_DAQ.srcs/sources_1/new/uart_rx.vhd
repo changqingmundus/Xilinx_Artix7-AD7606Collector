@@ -43,6 +43,9 @@ entity uart_rx is
  port(clk:in std_logic;
      rx_rst:in std_logic;
      rx:in std_logic;
+     
+     rx_debug:out std_logic;
+     
      rx_data:out std_logic_vector((data_width - 1) downto 0);
      rx_parity:out std_logic;
      rx_done:out std_logic);
@@ -82,7 +85,33 @@ architecture Behavioral of uart_rx is
  --接收數據校驗定義
  signal r_data_rcv:std_logic_vector((data_width -1) downto 0);
  signal r_parity_check:std_logic;
+ 
+ signal rx_start_debug : std_logic;
+ signal rx_sync2_d : std_logic := '1';
+ signal debug_cnt : integer range 0 to 25000000 := 0;
+ signal led_debug : std_logic := '0';
 begin
+process(clk)
+begin
+    if rising_edge(clk) then
+
+        if(rx_sync2_d='1' and rx_sync2='0') then
+            led_debug <= '1';
+            debug_cnt <= 0;
+
+        elsif(debug_cnt < 25000000) then
+            debug_cnt <= debug_cnt + 1;
+
+        else
+            led_debug <= '0';
+
+        end if;
+
+    end if;
+end process;
+ rx_debug <= led_debug;
+ --rx_debug<=rx_sync2; --user config
+
  rx_parity<=rx_parity_reg;
  --時鐘域同步實現
  process(clk,rx_rst)
@@ -144,7 +173,7 @@ begin
    elsif(clk'event and clk='1')then
     if(baud_valid = '0')then
      r_current_state<=STATE_IDLE;
-    elsif(baud_cnt = 0)then
+    elsif(baud_pulse = '1')then  --user config
      r_current_state<=r_next_state;
     end if;
    end if;
@@ -169,7 +198,7 @@ begin
         r_next_state<=STATE_DATA;
       end if;
     when STATE_PARITY=>
-     r_next_state<=STATE_PARITY;
+     r_next_state<=STATE_END;
     when STATE_END=>
      r_next_state<=STATE_IDLE;
     when others=>
@@ -188,7 +217,7 @@ begin
     rx_data<=(others=>'0');
     rx_parity<='0';
     rx_done<='0';
-   else
+   elsif(clk'event and clk='1')then
     case r_current_state is
      when STATE_IDLE=>
       r_rcv_cnt<=(others=>'0');
@@ -199,24 +228,33 @@ begin
       baud_valid<='1';
      end if;
      when STATE_START=>
-      if(baud_pulse = '1' and rx_sync2 = '1')then
-       baud_valid<='0';
-      end if;
-     when STATE_DATA=>
       if(baud_pulse = '1')then
-       r_data_rcv<=rx_sync2 & r_data_rcv(data_width -1 downto 1);
-       r_rcv_cnt<=r_rcv_cnt+1;
-       r_parity_check<=r_parity_check xor rx_sync2;
+       if(rx_sync2 = '0')then
+        baud_valid<='0';
+       end if;
+      end if;
+     when STATE_DATA =>
+      if(baud_pulse='1') then
+       if(r_rcv_cnt = data_width-1) then
+         r_data_rcv <= rx_sync2 & r_data_rcv(data_width-1 downto 1);
+         rx_data <= rx_sync2 & r_data_rcv(data_width-1 downto 1);
+         rx_done <= '1';
+         r_rcv_cnt <= (others=>'0');
+        else
+         r_data_rcv <= rx_sync2 & r_data_rcv(data_width-1 downto 1);
+         r_rcv_cnt <= r_rcv_cnt + 1;
+         rx_done <= '0';
+       end if;
       end if;
      when STATE_PARITY=>
       if(baud_pulse = '1')then
        if((r_parity_check xor rx_sync2) = '0')then 
-        rx_parity<='1';
+        rx_parity_reg <='1';
        else
-        rx_parity<='0';
+        rx_parity_reg <='0';
        end if;
       else
-       rx_parity<=rx_parity_reg;
+       rx_parity_reg <=rx_parity_reg;
       end if;
      when STATE_END=>
       if(baud_pulse = '1')then
