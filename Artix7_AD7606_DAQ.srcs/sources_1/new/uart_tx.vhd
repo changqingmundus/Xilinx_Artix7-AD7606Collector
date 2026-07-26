@@ -14,7 +14,7 @@ end uart_tx;
 architecture Behavioral of uart_tx is
 
 
-constant BAUD_CNT_MAX : integer := 5207; -- 9600bps
+constant BAUD_CNT_MAX : integer := 24; -- 2Mbps
 
 
 signal baud_cnt : integer range 0 to BAUD_CNT_MAX := 0;
@@ -31,7 +31,7 @@ signal send_cnt : integer range 0 to 50000000 := 0;
 signal busy : std_logic := '0';
 
 
-signal data_buf : std_logic_vector(7 downto 0):=x"55";
+signal data_buf : std_logic_vector(7 downto 0):=x"A8";
 
 
 begin

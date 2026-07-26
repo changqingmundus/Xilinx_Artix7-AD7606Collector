@@ -69,8 +69,9 @@ set_property IOSTANDARD LVCMOS33 [get_ports ad_cs]
 ##================================================
 ## UART
 ##================================================
-
-set_property PACKAGE_PIN P20 [get_ports uart_tx]
+set_property PACKAGE_PIN P20 [get_ports uart_rx]
+set_property IOSTANDARD LVCMOS33 [get_ports uart_rx]
+set_property PACKAGE_PIN T20 [get_ports uart_tx]
 set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]

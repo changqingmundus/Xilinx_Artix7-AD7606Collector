@@ -15,7 +15,7 @@
 -- Revision:
 -- Revision 0.01 - File Created
 -- Additional Comments:
--- 
+--     
 ----------------------------------------------------------------------------------
 
 
@@ -47,11 +47,18 @@ entity top is
    ad_cs:    out std_logic;
    
    --UART interface
-   --uart_rx:  in std_logic;
+   uart_rx:  in std_logic;
    uart_tx:  out std_logic);
 end top;
 
 architecture Behavioral of top is
+ --uart_rx define
+ signal rx_rst    : std_logic := '1';
+ signal rx_data   : std_logic_vector(7 downto 0);
+ signal rx_parity : std_logic;
+ signal rx_done   : std_logic;
+ 
+ --ad7606 define
  signal ad_data_reg: std_logic_vector(15 downto 0);
  signal ad_valid:    std_logic;
  
@@ -63,32 +70,31 @@ signal cnt : integer range 0 to 50000000:=0;
 signal led_reg : std_logic := '0';
 
 begin
-
-
-process(clk)
-begin
-
-if rising_edge(clk) then
-
-    if cnt = 50000000 then
-
-        cnt <= 0;
-        led_reg<= not led_reg;
-
-        test_data <= x"0055";
-        test_valid <= '1';
-
-    else
-
-        cnt <= cnt + 1;
-        test_valid <= '0';
-
+ process(clk)
+  begin
+   if rising_edge(clk) then
+    if(rx_done = '1')then
+     led_reg<=not led_reg;
     end if;
-
-end if;
+   end if;
+ end process;
  led<=led_reg;
-
-end process;
+ 
+ --uart_rx port
+ u_uart_rx:entity work.uart_rx
+  generic map(
+  clk_freq=>50,
+  baud_rate=>2000000,
+  parity=>0,
+  data_width=>8)
+  port map(
+   clk=>clk,
+   rx_rst=>rx_rst,
+   rx=>uart_rx,
+   rx_data=>rx_data,
+   rx_parity=>rx_parity,
+   rx_done=>rx_done);
+   
  u_ad7606_ctrl:entity work.ad7606_ctrl
  port map(
   clk       =>clk,
