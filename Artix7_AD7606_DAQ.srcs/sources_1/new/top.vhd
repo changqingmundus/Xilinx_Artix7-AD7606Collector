@@ -66,21 +66,18 @@ signal test_data  : std_logic_vector(15 downto 0);
 signal test_valid : std_logic;
 
 signal cnt : integer range 0 to 50000000:=0;
-
 signal led_reg : std_logic := '0';
-signal rx_debug : std_logic;
 
 begin
-led<=rx_done;
  process(clk)
   begin
    if rising_edge(clk) then
     if(rx_done = '1')then
-     led_reg<=not led_reg;
+     led_reg<='1';
+     end if;
     end if;
-   end if;
  end process;
- 
+ led<=led_reg;  
  --uart_rx port
  u_uart_rx:entity work.uart_rx
   generic map(
@@ -91,7 +88,6 @@ led<=rx_done;
   port map(
    clk=>clk,
    rx_rst=>rx_rst,
-   rx_debug=>rx_debug,
    rx=>uart_rx,
    rx_data=>rx_data,
    rx_parity=>rx_parity,

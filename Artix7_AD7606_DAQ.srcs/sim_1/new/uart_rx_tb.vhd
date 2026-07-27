@@ -118,10 +118,7 @@ begin
     --stop bit
     uart_rx<='1';
     wait for BIT_TIME;
-    
-    uart_rx<='0';
-    wait for BIT_TIME;
-    
+
     wait;
    end process;
 end Behavioral;
