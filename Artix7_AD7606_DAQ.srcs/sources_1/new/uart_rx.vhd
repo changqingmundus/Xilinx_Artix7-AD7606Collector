@@ -37,11 +37,12 @@ use IEEE.NUMERIC_STD.ALL;
 entity uart_rx is
  generic(clk_freq:integer := 50;
          baud_rate:integer :=2000000;
-         parity:integer := 0;
+         parity_on:integer := 0;
+         parity_type:integer :=0;
          data_width:integer := 8);
 --  Port ( );
  port(clk:in std_logic;
-     rx_rst:in std_logic;
+     rst:in std_logic;
      rx:in std_logic;
      
      rx_data:out std_logic_vector((data_width - 1) downto 0);
@@ -89,9 +90,9 @@ begin
 
  rx_parity<=rx_parity_reg;
  --時鐘域同步實現
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     rx_sync1<='1';
     rx_sync2<='1';
    elsif(clk'event and clk = '1')then
@@ -101,9 +102,9 @@ begin
   end process;
   
  --消除接收噪聲 
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     rx_start_filter<=(others=>'1');
    elsif(clk'event and clk = '1')then
      rx_start_filter<=rx_start_filter(3 downto 0) & rx_sync2;
@@ -111,9 +112,9 @@ begin
   end process;
   
  --波特率計數器實現
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     baud_cnt<=(others=>'0');
    elsif(clk'event and clk='1')then
     if(baud_valid = '0')then
@@ -127,9 +128,9 @@ begin
   end process;  
 
  --波特率采樣脈衝實現
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     baud_pulse<='0';
    elsif(clk'event and clk='1')then
     if(baud_cnt = CYCLE/2-1)then
@@ -141,15 +142,17 @@ begin
   end process;
 
  --狀態機狀態變化定義
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     r_current_state<=STATE_IDLE;
    elsif(clk'event and clk='1')then
     if(baud_valid = '0')then
      r_current_state<=STATE_IDLE;
-    elsif(baud_pulse = '1')then  --user config
-     r_current_state<=r_next_state;
+    elsif(baud_pulse = '1')then
+     if(baud_cnt = 0)then
+      r_current_state<=r_next_state;
+     end if;
     end if;
    end if;
   end process;
@@ -182,9 +185,9 @@ begin
    end process;
    
  --狀態機輸出邏輯實現
- process(clk,rx_rst)
+ process(clk,rst)
   begin
-   if(rx_rst = '0')then
+   if(rst = '0')then
     baud_valid<='0';
     r_rcv_cnt<=(others=>'0');
     r_data_rcv<=(others=>'0');
@@ -229,7 +232,7 @@ begin
       end if;
      when STATE_END=>
       if(rx_done_reg = '1')then
-       if(parity = 0) or (rx_parity_reg = '1')then
+       if(parity_on = 0) or (rx_parity_reg = '1')then
         rx_data<=r_data_rcv;
         rx_done<='1';
         rx_done_reg<='0';

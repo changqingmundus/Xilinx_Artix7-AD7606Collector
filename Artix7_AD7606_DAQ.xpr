@@ -4,7 +4,7 @@
 <!-- Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.                   -->
 <!-- Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.   -->
 
-<Project Product="Vivado" Version="7" Minor="72" Path="D:/Project Docs/VivadoPRJ/Xilinx_Artix7-AD7606Collector/Artix7_AD7606_DAQ.xpr">
+<Project Product="Vivado" Version="7" Minor="72" Path="D:/Project_Docs/VivadoPRJ/Artix7_AD7606_DAQ/Artix7_AD7606_DAQ.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="bdb2bdcb3fd8405b8ab67adf43921fc1"/>
