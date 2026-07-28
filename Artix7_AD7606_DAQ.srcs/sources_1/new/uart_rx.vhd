@@ -149,7 +149,7 @@ begin
    elsif(clk'event and clk='1')then
     if(baud_valid = '0')then
      r_current_state<=STATE_IDLE;
-    elsif(baud_pulse = '1')then
+    elsif(baud_valid = '1')then
      if(baud_cnt = 0)then
       r_current_state<=r_next_state;
      end if;
@@ -167,7 +167,7 @@ begin
      r_next_state<=STATE_DATA;
     when STATE_DATA=>
      if(r_rcv_cnt = data_width)then
-       if(parity = 0)then
+       if(parity_on = 0)then
         r_next_state<=STATE_END;
        else
         r_next_state<=STATE_PARITY;
@@ -207,7 +207,7 @@ begin
      end if;
      when STATE_START=>
       if(baud_pulse = '1')then
-       if(rx_sync2 = '0')then
+       if(rx_sync2 = '1')then
         baud_valid<='0';
        end if;
       end if;

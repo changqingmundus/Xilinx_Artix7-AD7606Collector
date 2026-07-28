@@ -37,7 +37,7 @@ end uart_rx_tb;
 
 architecture Behavioral of uart_rx_tb is
  signal clk:std_logic :='0';
- signal rx_rst:std_logic :='0';
+ signal rst:std_logic :='0';
  signal uart_rx:std_logic:='0';
  signal rx_data:std_logic_vector(7 downto 0);
  signal rx_parity:std_logic;
@@ -51,11 +51,11 @@ begin
  generic map(
   clk_freq=>50,
   baud_rate=>2000000,
-  parity=>0,
+  parity_on=>0,
   data_width=>8)
  port map(
   clk=>clk,
-  rx_rst=>rx_rst,
+  rst=>rst,
   rx=>uart_rx,
   rx_data=>rx_data,
   rx_parity=>rx_parity,
@@ -66,53 +66,38 @@ begin
    begin
     
     --reset
-    rx_rst<='0';
+    rst<='0';
+    uart_rx<='1';
     wait for 200ns;
     
-    --release reset
-    rx_rst<='1';
+    rst<='1';
     
-    --UART IDLE
+    --IDLE
     uart_rx<='1';
-    wait for 1000ns;
+    wait for BIT_TIME;
     
-    --send 0x55
+    --send 0x01
     -- UART:8N1
     
-    --startt bit
+    --start bit
     uart_rx<='0';
     wait for BIT_TIME;
     
-    --bit0  --1
     uart_rx<='1';
     wait for BIT_TIME;
-    
-    --bit1  --0
     uart_rx<='0';
     wait for BIT_TIME;
-    
-    --bit2  --1
     uart_rx<='1';
     wait for BIT_TIME;
-    
-    --bit3  --0
     uart_rx<='0';
     wait for BIT_TIME;
-    
-    --bit4  --1
+    uart_rx<='0';
+    wait for BIT_TIME;
     uart_rx<='1';
     wait for BIT_TIME;
-    
-    --bit5  --0
     uart_rx<='0';
     wait for BIT_TIME;
-    
-    --bit6  --1
     uart_rx<='1';
-    wait for BIT_TIME;
-    
-    --bit7  --0
-    uart_rx<='0';
     wait for BIT_TIME;
     
     --stop bit

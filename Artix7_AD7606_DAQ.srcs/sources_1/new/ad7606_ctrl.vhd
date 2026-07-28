@@ -35,14 +35,21 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity ad7606_ctrl is
 --  Port ( );
  port(
-  clk:       in std_logic;
-  busy:   in std_logic;
-  data_in:   in std_logic_vector(15 downto 0);
-  convst:    out std_logic;
-  rd:        out std_logic;
-  cs:        out std_logic;
-  data_out:  out std_logic_vector(15 downto 0);
-  data_valid:out std_logic);
+  clk               :in std_logic;
+  
+  busy              :in std_logic;
+  frst              :in std_logic;
+  data_in           :in std_logic_vector(15 downto 0);
+  
+  convstA,convstB   :out std_logic;
+  ad_rst            :out std_logic;
+  ad_cs             :out std_logic;
+  rd                :out std_logic;
+  os0,os1,os2       :out std_logic;
+  rage              :out std_logic;
+  
+  data_out          :out std_logic_vector(15 downto 0);
+  data_valid        :out std_logic);
   
 end ad7606_ctrl;
 
@@ -62,15 +69,15 @@ begin
    if (clk'event and clk='1') then
     case state is
     when IDLE =>
-        convst <= '1';
+        convstA <= '1';
         rd <= '1';
-        cs <= '1';
+        ad_cs <= '1';
         data_valid <= '0';
         cnt <= 0;
         state <= CONV;
     -- 產生CONVST脈衝
     when CONV =>
-        convst <= '0';
+        convstA <= '0';
         if cnt = 5 then
             cnt <= 0;
             state <= WAIT_BUSY_HIGH;
@@ -80,7 +87,7 @@ begin
 
     -- 等BUSY變高
     when WAIT_BUSY_HIGH =>
-        convst <= '1';
+        convstA <= '1';
         if busy='1' then
             state <= WAIT_BUSY_LOW;
         end if;
@@ -91,7 +98,7 @@ begin
         end if;
     -- 讀數據
     when READ_DATA =>
-        cs <= '0';
+        ad_cs <= '0';
         rd <= '0';
         data_out <= data_in;
         data_valid <= '1';

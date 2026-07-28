@@ -1,4 +1,3 @@
-set_property IOSTANDARD LVCMOS33 [get_ports {ad_data[*]}]
 ##================================================
 ## Artix7 AD7606 DAQ
 ## XC7A35TI FGG484
@@ -38,14 +37,14 @@ set_property PACKAGE_PIN AA19 [get_ports {ad_data[12]}]
 set_property PACKAGE_PIN AB20 [get_ports {ad_data[13]}]
 set_property PACKAGE_PIN W19 [get_ports {ad_data[14]}]
 set_property PACKAGE_PIN W20 [get_ports {ad_data[15]}]
-
+set_property IOSTANDARD LVCMOS33 [get_ports {ad_data[*]}]
 
 
 ##================================================
-## AD7606 BUSY
+## AD7606 Busy
 ##================================================
 
-set_property PACKAGE_PIN M22 [get_ports ad_busy]
+set_property PACKAGE_PIN K18 [get_ports ad_busy]
 set_property IOSTANDARD LVCMOS33 [get_ports ad_busy]
 
 
@@ -53,15 +52,28 @@ set_property IOSTANDARD LVCMOS33 [get_ports ad_busy]
 ## AD7606 CONTROL
 ##================================================
 
-set_property PACKAGE_PIN N22 [get_ports ad_convst]
-set_property IOSTANDARD LVCMOS33 [get_ports ad_convst]
+set_property PACKAGE_PIN M22 [get_ports os0]
+set_property IOSTANDARD LVCMOS33 [get_ports os0]
+set_property PACKAGE_PIN N22 [get_ports os1]
+set_property IOSTANDARD LVCMOS33 [get_ports os1]
+set_property PACKAGE_PIN M20 [get_ports os2]
+set_property IOSTANDARD LVCMOS33 [get_ports os2]
 
+set_property PACKAGE_PIN N20 [get_ports ad_rage]
+set_property IOSTANDARD LVCMOS33 [get_ports ad_rage]
 
-set_property PACKAGE_PIN M20 [get_ports ad_rd]
+set_property PACKAGE_PIN L20 [get_ports ad_convstA]
+set_property IOSTANDARD LVCMOS33 [get_ports ad_convstA]
+set_property PACKAGE_PIN L19 [get_ports ad_convstB]
+set_property IOSTANDARD LVCMOS33 [get_ports ad_convstB]
+
+set_property PACKAGE_PIN N19 [get_ports ad_rst]
+set_property IOSTANDARD LVCMOS33 [get_ports ad_rst]
+
+set_property PACKAGE_PIN N18 [get_ports ad_rd]
 set_property IOSTANDARD LVCMOS33 [get_ports ad_rd]
 
-
-set_property PACKAGE_PIN N20 [get_ports ad_cs]
+set_property PACKAGE_PIN K19 [get_ports ad_cs]
 set_property IOSTANDARD LVCMOS33 [get_ports ad_cs]
 
 

@@ -42,10 +42,10 @@ entity uart_tx is
          data_width:integer := 8);
 --  Port ( );
  port(clk:in std_logic;
-     rst:in std_logic;
-     tx_data:in std_logic_vector((data_width - 1) downto 0);
-     tx_parity:in std_logic;
-     tx:out std_logic);
+      rst:in std_logic;
+      tx_data:in std_logic_vector((data_width - 1) downto 0);
+      data_valid:in std_logic;
+      tx:out std_logic);
 end uart_tx;
 
 architecture Behavioral of uart_tx is
@@ -117,7 +117,7 @@ begin
    elsif(clk'event and clk='1')then
     if(baud_valid = '0')then
      r_current_state<=STATE_IDLE;
-     elsif(baud_pulse = '1')then
+     elsif(baud_valid = '1')then
       if(baud_cnt = 0)then
        r_current_state<=r_next_state;
       end if;
@@ -167,7 +167,7 @@ begin
       r_tx_cnt<=(others=>'0');
       tx<='1';
       r_parity_check<='0';
-      if(tx_parity = '1')then
+      if(data_valid = '1')then
        baud_valid<='1';
        r_data_tx<=tx_data;
       end if;
