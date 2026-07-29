@@ -52,12 +52,12 @@ set_property IOSTANDARD LVCMOS33 [get_ports ad_busy]
 ## AD7606 CONTROL
 ##================================================
 
-set_property PACKAGE_PIN M22 [get_ports os0]
-set_property IOSTANDARD LVCMOS33 [get_ports os0]
-set_property PACKAGE_PIN N22 [get_ports os1]
-set_property IOSTANDARD LVCMOS33 [get_ports os1]
-set_property PACKAGE_PIN M20 [get_ports os2]
-set_property IOSTANDARD LVCMOS33 [get_ports os2]
+set_property PACKAGE_PIN M22 [get_ports os[0]]
+set_property IOSTANDARD LVCMOS33 [get_ports os[0]]
+set_property PACKAGE_PIN N22 [get_ports os[1]]
+set_property IOSTANDARD LVCMOS33 [get_ports os[1]]
+set_property PACKAGE_PIN M20 [get_ports os[2]]
+set_property IOSTANDARD LVCMOS33 [get_ports os[2]]
 
 set_property PACKAGE_PIN N20 [get_ports ad_rage]
 set_property IOSTANDARD LVCMOS33 [get_ports ad_rage]
