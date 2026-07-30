@@ -49,7 +49,7 @@ entity top is
    ad_rst            :out std_logic;
    ad_cs             :out std_logic;
    ad_rd             :out std_logic;
-   os0,os1,os2       :out std_logic;
+   os                :out std_logic_vector(2 downto 0);
    ad_rage           :out std_logic;
    
    --UART interface
@@ -68,6 +68,15 @@ architecture Behavioral of top is
  --ad7606 define
  signal ad_data_reg: std_logic_vector(15 downto 0);
  signal ad_valid:    std_logic;
+ 
+ --fifo define
+ signal ch_cnt    :integer range 0 to 7;
+ signal fifo_din  :std_logic_vector(15 downto 0);
+ signal fifo_wr_en:std_logic;
+ signal fifo_dout :std_logic_vector(7 downto 0);
+ signal fifo_full :std_logic;
+ signal fifo_rd   :std_logic; 
+ 
  --uart_tx define
  signal tx_data_reg:std_logic_vector(7 downto 0);
  signal data_valid_seg:std_logic;
@@ -77,6 +86,8 @@ signal cnt : integer range 0 to 50000000:=0;
 signal led_reg : std_logic := '0';
 
 begin
+
+ --poweron reset
  process(clk)
   begin 
    if rising_edge(clk) then
@@ -88,28 +99,54 @@ begin
     end if;
    end if;
   end process;
- --process(clk,rst)
-  --begin
-   --if(rst = '0')then
-    --led_reg<='0';
-   --elsif rising_edge(clk) then
-    --if(rx_done = '1')then
-     --led_reg<=not led_reg;
-     --end if;
-    --end if;
- --end process;
- --led<=led_reg; 
  
-  process(clk)
-begin
- if rising_edge(clk) then
-  data_valid_seg<='0';
-    if(rx_done='1') then
-        tx_data_reg <= rx_data;
-        data_valid_seg<= '1';
+ --ad_data to fifo
+ process(clk)
+  begin
+   if rising_edge (clk)then
+    fifo_wr_en<='0';
+    if(ad_valid = '1')then
+     ch_cnt<=0;
+    elsif(ch_cnt < 8)then 
+     if(fifo_full = '0')then
+      fifo_wr_en<='1';
+      case ch_cnt is 
+       when 0 =>
+        fifo_din<=ad_ch1;
+       when 1 =>
+        fifo_din<=ad_ch2;
+       when 2 =>
+        fifo_din<=ad_ch3;
+       when 3 =>
+        fifo_din<=ad_ch4;
+       when 4 =>
+        fifo_din<=ad_ch5;
+       when 5 =>
+        fifo_din<=ad_ch6;
+       when 6 =>
+        fifo_din<=ad_ch7;
+       when 7 =>
+        fifo_din<=ad_ch8;
+       when others =>
+        fifo_din<=(others=>'0');
+      end case;
+     else
+      ch_cnt<=ch_cnt+1;
+     end if;
     end if;
- end if;
-end process;
+   end if;
+  end process;
+ 
+ process(clk)
+  begin
+   if rising_edge(clk) then
+    data_valid_seg<='0';
+    if(rx_done='1') then
+      tx_data_reg <= rx_data;
+      data_valid_seg<= '1';
+    end if;
+   end if;
+  end process;
   
  --uart_rx port
  u_uart_rx:entity work.uart_rx
@@ -135,14 +172,25 @@ end process;
   data_in   =>ad_data,
   convstA   =>ad_convstA,
   convstB   =>ad_convstB,
-  os0       =>os0,
-  os1       =>os1,
-  os2       =>os2,
+  os        =>os,
   rd        =>ad_rd,
   rage      =>ad_rage,
   ad_cs     =>ad_cs,
   data_out  =>ad_data_reg,
   data_valid=>ad_valid);
+  
+ fifo_generator_0_inst:entity work.fifo_generator_0
+ port map(
+  clk=>clk,
+  srst=>rst,
+  din=>fifo_din,
+  wr_en=>fifo_wr_en,
+  rd_en=>fifo_rd_en,
+  dout=>fifo_dout,
+  full=>fifo_full,
+  empty=>fifo_empty,
+  almost_full=>open,
+  almost_empty=>open);
 
  u_uart_tx:entity work.uart_tx
   generic map(
