@@ -49,20 +49,19 @@ entity ad7606_ctrl is
   os                :out std_logic_vector(2 downto 0);
   rage              :out std_logic;
   
-  data_out          :out std_logic_vector(15 downto 0);
+  ad_ch1            :out std_logic_vector(15 downto 0);
+  ad_ch2            :out std_logic_vector(15 downto 0);
+  ad_ch3            :out std_logic_vector(15 downto 0);
+  ad_ch4            :out std_logic_vector(15 downto 0);
+  ad_ch5            :out std_logic_vector(15 downto 0);
+  ad_ch6            :out std_logic_vector(15 downto 0);
+  ad_ch7            :out std_logic_vector(15 downto 0);
+  ad_ch8            :out std_logic_vector(15 downto 0);
   data_valid        :out std_logic);
   
 end ad7606_ctrl;
 
 architecture Behavioral of ad7606_ctrl is
- signal ad_ch1 : std_logic_vector(15 downto 0);
- signal ad_ch2 : std_logic_vector(15 downto 0);
- signal ad_ch3 : std_logic_vector(15 downto 0);
- signal ad_ch4 : std_logic_vector(15 downto 0);
- signal ad_ch5 : std_logic_vector(15 downto 0);
- signal ad_ch6 : std_logic_vector(15 downto 0);
- signal ad_ch7 : std_logic_vector(15 downto 0);
- signal ad_ch8 : std_logic_vector(15 downto 0);
 
  signal channel_cnt : integer range 0 to 7;
 

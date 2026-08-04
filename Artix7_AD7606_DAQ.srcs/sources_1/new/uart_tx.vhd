@@ -45,6 +45,7 @@ entity uart_tx is
       rst:in std_logic;
       tx_data:in std_logic_vector((data_width - 1) downto 0);
       data_valid:in std_logic;
+      tx_busy:out std_logic;
       tx:out std_logic);
 end uart_tx;
 
@@ -166,6 +167,7 @@ begin
      when STATE_IDLE=>
       r_tx_cnt<=(others=>'0');
       tx<='1';
+      tx_busy<='0';
       r_parity_check<='0';
       if(data_valid = '1')then
        baud_valid<='1';
@@ -174,6 +176,7 @@ begin
      when STATE_START=>
       if(baud_pulse = '1')then
        tx<='0';
+       tx_busy<='1';
       end if;
      when STATE_DATA=>
       if(baud_pulse='1') then
@@ -193,6 +196,7 @@ begin
      when STATE_END=>
       if(baud_pulse = '1')then
        tx<='1';
+       tx_busy<='0';
        baud_valid<='0';
       end if;
      end case;

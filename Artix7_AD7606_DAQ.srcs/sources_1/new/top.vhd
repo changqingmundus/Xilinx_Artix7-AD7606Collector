@@ -66,20 +66,47 @@ architecture Behavioral of top is
  signal rx_done   : std_logic;
  
  --ad7606 define
- signal ad_data_reg: std_logic_vector(15 downto 0);
- signal ad_valid:    std_logic;
+ 
+ signal ad_ch1    :std_logic_vector(15 downto 0);
+ signal ad_ch2    :std_logic_vector(15 downto 0);
+ signal ad_ch3    :std_logic_vector(15 downto 0);
+ signal ad_ch4    :std_logic_vector(15 downto 0);
+ signal ad_ch5    :std_logic_vector(15 downto 0);
+ signal ad_ch6    :std_logic_vector(15 downto 0);
+ signal ad_ch7    :std_logic_vector(15 downto 0);
+ signal ad_ch8    :std_logic_vector(15 downto 0);
+ signal ad_valid  :std_logic;
  
  --fifo define
  signal ch_cnt    :integer range 0 to 7;
+ signal fifo_rd_en:std_logic;
  signal fifo_din  :std_logic_vector(15 downto 0);
  signal fifo_wr_en:std_logic;
+ signal fifo_empty:std_logic;
  signal fifo_dout :std_logic_vector(7 downto 0);
  signal fifo_full :std_logic;
  signal fifo_rd   :std_logic; 
  
+ --signal processor define
+ signal data_A : std_logic_vector(15 downto 0);
+ signal data_B : std_logic_vector(15 downto 0);
+ signal adc_valid : std_logic;
+ signal start : std_logic;
+ signal sample_cnt_set : std_logic_vector(15 downto 0);
+ signal A_max_value : std_logic_vector(15 downto 0);
+ signal A_min_value : std_logic_vector(15 downto 0);
+ signal A_amplitude : std_logic_vector(15 downto 0);
+ signal A_offset : std_logic_vector(15 downto 0);
+ signal B_max_value : std_logic_vector(15 downto 0);
+ signal B_min_value : std_logic_vector(15 downto 0);
+ signal B_amplitude : std_logic_vector(15 downto 0);
+ signal B_offset : std_logic_vector(15 downto 0);
+ signal calcul_done : std_logic;
+ 
  --uart_tx define
- signal tx_data_reg:std_logic_vector(7 downto 0);
+ signal tx_data_reg   :std_logic_vector(7 downto 0);
  signal data_valid_seg:std_logic;
+ signal tx_busy       :std_logic;
  
 --led test
 signal cnt : integer range 0 to 50000000:=0;
@@ -141,8 +168,11 @@ begin
   begin
    if rising_edge(clk) then
     data_valid_seg<='0';
-    if(rx_done='1') then
-      tx_data_reg <= rx_data;
+    fifo_rd_en<='0';
+    if(tx_busy='0' and fifo_empty='0') then
+      --tx_data_reg <= rx_data;
+      tx_data_reg<=fifo_dout;
+      fifo_rd_en<='1';
       data_valid_seg<= '1';
     end if;
    end if;
@@ -166,6 +196,7 @@ begin
  u_ad7606_ctrl:entity work.ad7606_ctrl
  port map(
   clk       =>clk,
+  rst       =>rst,
   ad_rst    =>ad_rst,
   busy      =>ad_busy,
   frst      =>ad_frst,
@@ -176,7 +207,14 @@ begin
   rd        =>ad_rd,
   rage      =>ad_rage,
   ad_cs     =>ad_cs,
-  data_out  =>ad_data_reg,
+  ad_ch1    =>ad_ch1,
+  ad_ch2    =>ad_ch2,
+  ad_ch3    =>ad_ch3,
+  ad_ch4    =>ad_ch4,
+  ad_ch5    =>ad_ch5,
+  ad_ch6    =>ad_ch6,
+  ad_ch7    =>ad_ch7,
+  ad_ch8    =>ad_ch8,
   data_valid=>ad_valid);
   
  fifo_generator_0_inst:entity work.fifo_generator_0
@@ -191,6 +229,25 @@ begin
   empty=>fifo_empty,
   almost_full=>open,
   almost_empty=>open);
+  
+ u_signal_processor:entity work.signal_processor
+  port map(
+   clk    =>clk,
+   rst    =>rst,
+   data_A=>data_A,
+   data_B=>data_B,
+   adc_valid=>adc_valid,
+   start=>start,
+   sample_cnt_set=>sample_cnt_set,
+   A_max_value=>A_max_value,
+   A_min_value=>A_min_value,
+   A_amplitude=>A_amplitude,
+   A_offset=>A_offset,
+   B_max_value=>B_max_value,
+   B_min_value=>B_min_value,
+   B_amplitude=>B_amplitude,
+   B_offset=>B_offset,
+   calcul_done=>calcul_done);
 
  u_uart_tx:entity work.uart_tx
   generic map(
@@ -202,7 +259,8 @@ begin
    clk       =>clk,
    rst       =>rst,
    tx_data   =>tx_data_reg,
-   data_valid =>data_valid_seg,
+   data_valid=>data_valid_seg,
+   tx_busy   =>tx_busy,
    tx        =>uart_tx);
 
 end Behavioral;
