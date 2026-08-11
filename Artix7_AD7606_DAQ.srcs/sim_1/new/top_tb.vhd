@@ -36,62 +36,76 @@ entity top_tb is
 end top_tb;
 
 architecture Behavioral of top_tb is
- signal clk:std_logic :='0';
- signal rst:std_logic :='0';
- signal uart_rx:std_logic:='1';
- signal uart_tx:std_logic;
- signal data_valid:std_logic := '0';
- signal rx_data   : std_logic_vector(7 downto 0);
- signal tx_data_reg:std_logic_vector(7 downto 0);
+ signal clk        :std_logic :='0';
+ 
+ signal ad_busy : std_logic := '0';
+ signal ad_frst : std_logic := '0';
+ signal ad_data : std_logic_vector(15 downto 0);
+ signal ad_convstA : std_logic;
+ signal ad_convstB : std_logic;
+ signal ad_rst : std_logic;
+ signal ad_cs : std_logic;
+ signal ad_rd : std_logic;
+ signal os : std_logic_vector(2 downto 0);
+ signal ad_rage : std_logic;
+ 
+ signal uart_rx : std_logic := '1';
+ signal uart_tx : std_logic;
  
  constant CLK_PERIOD: time:=20ns;
- constant BIT_TIME: time:=500ns; --2Mbps
 begin
  clk<=not clk after CLK_PERIOD/2;
  
  uut:entity work.top
  port map(
   clk=>clk,
-  rst=>rst,
-  ad_busy=>'0',
-  ad_frst=>'0',
-  ad_data=>(others=>'0'),
+  ad_rst=>ad_rst,
+  ad_busy=>ad_busy,
+  ad_convstA=>ad_convstA,
+  ad_convstB=>ad_convstB,
+  ad_frst=>ad_frst,
+  ad_data=>ad_data,
+  ad_cs => ad_cs,
+  ad_rd => ad_rd,
+  os => os,
+  ad_rage => ad_rage,
   uart_rx=>uart_rx,
   uart_tx=>uart_tx);
  process
   begin
-   rst<='0';
-   wait for 200ns;
+   ad_busy<='0';
+   ad_data<=x"0000";
+   wait for 1us;
    
-   rst<='1';
-   wait for 200ns;
+   wait until ad_convstA='0';
    
-   uart_rx<='1';
-   wait for BIT_TIME;
+   ad_busy<='1';
+   wait for 5us;
+   ad_busy<='0';
    
-   uart_rx<='0';
-   wait for BIT_TIME;
+   wait until ad_rd='0';
+   ad_data<=x"1011";
    
-   uart_rx <= '1';
-   wait for BIT_TIME;
-   uart_rx <= '0';
-   wait for BIT_TIME;
-   uart_rx <= '1';
-   wait for BIT_TIME;
-   uart_rx <= '0';
-   wait for BIT_TIME;
-   uart_rx <= '1';
-   wait for BIT_TIME;
-   uart_rx <= '0';
-   wait for BIT_TIME;
-   uart_rx <= '1';
-   wait for BIT_TIME;
-   uart_rx <= '0';
-   wait for BIT_TIME;
+   wait until ad_rd='0';
+   ad_data<=x"1022";
    
-   uart_rx<='1';
-   wait for BIT_TIME;
-  
+   wait until ad_rd='0';
+   ad_data<=x"1033";
+   
+   wait until ad_rd='0';
+   ad_data<=x"1044";
+   
+   wait until ad_rd='0';
+   ad_data<=x"1055";
+   
+   wait until ad_rd='0';
+   ad_data<=x"1066";
+   
+   wait until ad_rd='0';
+   ad_data<=x"1077";
+   
+   wait until ad_rd='0';
+   ad_data<=x"1088";
   wait;
  end process;
 end Behavioral;

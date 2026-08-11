@@ -76,8 +76,6 @@ architecture Behavioral of uart_tx is
  --接收數據校驗定義
  signal r_data_tx:std_logic_vector((data_width -1) downto 0);
  signal r_parity_check:std_logic;
- 
- signal rx_done_reg : std_logic := '0';
 begin
   
  --波特率計數器實現
