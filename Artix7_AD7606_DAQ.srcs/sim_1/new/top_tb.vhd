@@ -73,6 +73,8 @@ begin
   uart_tx=>uart_tx);
  process
   begin
+   for i in 0 to 2 loop
+   
    ad_busy<='0';
    ad_data<=x"0000";
    wait for 1us;
@@ -106,6 +108,7 @@ begin
    
    wait until ad_rd='0';
    ad_data<=x"1088";
+   end loop;
   wait;
  end process;
 end Behavioral;

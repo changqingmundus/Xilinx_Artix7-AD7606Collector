@@ -168,13 +168,13 @@ begin
       tx_busy<='0';
       r_parity_check<='0';
       if(data_valid = '1')then
+       tx_busy<='1';
        baud_valid<='1';
        r_data_tx<=tx_data;
       end if;
      when STATE_START=>
       if(baud_pulse = '1')then
        tx<='0';
-       tx_busy<='1';
       end if;
      when STATE_DATA=>
       if(baud_pulse='1') then

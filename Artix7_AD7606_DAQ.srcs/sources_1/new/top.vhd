@@ -118,13 +118,17 @@ signal led_reg : std_logic := '0';
 
 begin
  fifo_srst <= not rst;
+ 
+ os<="000";
+ ad_rage<='0';
+ 
 
  --poweron reset
  process(clk)
   begin 
    if rising_edge(clk) then
-     if(cnt<100)then
-    --if(cnt<50000000)then
+     --if(cnt<100)then
+    if(cnt<50000000)then
      rst<='0';
      cnt<=cnt+1;
     else
@@ -165,8 +169,8 @@ begin
         fifo_din<=(others=>'0');
       end case;
        if(ch_cnt=7) then
-        ch_cnt <= 0;
-        fifo_start <= '0';
+        ch_cnt<=0;
+        fifo_start<='0';
        else
         ch_cnt<=ch_cnt+1;
        end if;
@@ -179,15 +183,13 @@ begin
  process(clk)
   begin
    if rising_edge(clk) then
-    data_valid_seg<='0';
-    fifo_rd_en<='0';
-    if(read_wait = '1')then
+    if(tx_busy='0' and fifo_empty='0') then
+      fifo_rd_en<= '1';
       tx_data_reg<=fifo_dout;
       data_valid_seg<= '1';
-      read_wait <= '0';
-     elsif(tx_busy='0' and fifo_empty='0') then
-      fifo_rd_en<= '1';
-      read_wait<= '1';
+     else
+      fifo_rd_en<= '0';
+      data_valid_seg<= '0';
     end if;
    end if;
   end process;
