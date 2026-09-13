@@ -122,7 +122,6 @@ begin
  os<="000";
  ad_rage<='0';
  
-
  --poweron reset
  process(clk)
   begin 
@@ -183,13 +182,17 @@ begin
  process(clk)
   begin
    if rising_edge(clk) then
+    fifo_rd_en<= '0';
+    --data_valid_seg<= '0';
     if(tx_busy='0' and fifo_empty='0') then
+     if(read_wait = '0')then
       fifo_rd_en<= '1';
+      read_wait<= '1';
+      else
       tx_data_reg<=fifo_dout;
       data_valid_seg<= '1';
-     else
-      fifo_rd_en<= '0';
-      data_valid_seg<= '0';
+      read_wait<='0';
+     end if;
     end if;
    end if;
   end process;
