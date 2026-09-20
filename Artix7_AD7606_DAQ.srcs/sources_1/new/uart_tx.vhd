@@ -159,13 +159,13 @@ begin
     r_tx_cnt<=(others=>'0');
     r_data_tx<=(others=>'0');
     r_parity_check<='0';
+    tx_busy<='0';
     tx<='0';
    elsif(clk'event and clk='1')then
     case r_current_state is
      when STATE_IDLE=>
       r_tx_cnt<=(others=>'0');
       tx<='1';
-      tx_busy<='0';
       r_parity_check<='0';
       if(data_valid = '1')then
        tx_busy<='1';

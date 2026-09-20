@@ -22,6 +22,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
@@ -65,8 +66,12 @@ architecture Behavioral of top is
  signal rx_parity : std_logic;
  signal rx_done   : std_logic;
  
- --ad7606 define
+ --uart_rx_cmd
+ signal cmd_valid :std_logic;
+ signal cmd_start :std_logic_vector(7 downto 0);
+ signal cmd_count :std_logic_vector(7 downto 0);
  
+ --ad7606 define
  signal ad_ch1    :std_logic_vector(15 downto 0);
  signal ad_ch2    :std_logic_vector(15 downto 0);
  signal ad_ch3    :std_logic_vector(15 downto 0);
@@ -106,6 +111,8 @@ architecture Behavioral of top is
  signal calcul_done : std_logic;
  
  --uart_tx define
+ signal tx_active     :std_logic;
+ signal tx_count      :std_logic_vector(7 downto 0);
  signal read_wait     : std_logic := '0';
  signal byte_sel      : std_logic := '0';
  signal tx_data_reg   : std_logic_vector(7 downto 0);
@@ -126,8 +133,8 @@ begin
  process(clk)
   begin 
    if rising_edge(clk) then
-     --if(cnt<100)then
-    if(cnt<50000000)then
+    if(cnt<100)then
+    --if(cnt<50000000)then
      rst<='0';
      cnt<=cnt+1;
     else
@@ -147,26 +154,6 @@ begin
     elsif(fifo_start='1')then
      if(fifo_full = '0')then
       fifo_wr_en<='1';
-      case ch_cnt is 
-       when 0 =>
-        fifo_din<=ad_ch1;
-       when 1 =>
-        fifo_din<=ad_ch2;
-       when 2 =>
-        fifo_din<=ad_ch3;
-       when 3 =>
-        fifo_din<=ad_ch4;
-       when 4 =>
-        fifo_din<=ad_ch5;
-       when 5 =>
-        fifo_din<=ad_ch6;
-       when 6 =>
-        fifo_din<=ad_ch7;
-       when 7 =>
-        fifo_din<=ad_ch8;
-       when others =>
-        fifo_din<=(others=>'0');
-      end case;
        if(ch_cnt=7) then
         ch_cnt<=0;
         fifo_start<='0';
@@ -178,20 +165,56 @@ begin
    end if;
  end process;
  
+ process(ch_cnt)
+  begin
+   case ch_cnt is 
+    when 0 =>
+     fifo_din<=x"1001";
+    when 1 =>
+     fifo_din<=x"2002";
+    when 2 =>
+     fifo_din<=x"3003";
+    when 3 =>
+     fifo_din<=x"4004";
+    when 4 =>
+     fifo_din<=x"5005";
+    when 5 =>
+     fifo_din<=x"6006";
+    when 6 =>
+     fifo_din<=x"7007";
+    when 7 =>
+     fifo_din<=x"8008";
+    when others =>
+     fifo_din<=(others=>'0');
+   end case;
+ end process;
+     
  --fifo to uart_tx
  process(clk)
   begin
    if rising_edge(clk) then
     fifo_rd_en<= '0';
-    --data_valid_seg<= '0';
-    if(tx_busy='0' and fifo_empty='0') then
-     if(read_wait = '0')then
-      fifo_rd_en<= '1';
-      read_wait<= '1';
+    data_valid_seg <= '0';
+    if(cmd_valid = '1')then
+     tx_active<='1';
+     tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
+     read_wait<='0';
+    elsif(tx_active = '1')then
+     if(tx_busy='0' and fifo_empty='0') then
+      if(read_wait = '0')then
+       fifo_rd_en<= '1';
+       read_wait<= '1';
       else
-      tx_data_reg<=fifo_dout;
-      data_valid_seg<= '1';
-      read_wait<='0';
+       tx_data_reg<=fifo_dout;
+       data_valid_seg<= '1';
+       read_wait<='0';
+       if(tx_count = 1)then
+        tx_count<=(others=>'0');
+        tx_active<='0';
+       else 
+        tx_count<=tx_count - 1;
+       end if;
+      end if;
      end if;
     end if;
    end if;
@@ -211,7 +234,20 @@ begin
    rx_data=>rx_data,
    rx_parity=>rx_parity,
    rx_done=>rx_done);
-   
+  
+ --uart_rx_cmd port
+ uart_cmd_parser:entity work.uart_cmd_parser
+ port map(
+  clk       =>clk,
+  rst       =>rst,
+  rx_data   =>rx_data,
+  --rx_valid  =>rx_valid,
+  rx_valid  =>rx_done,
+  cmd_valid =>cmd_valid,
+  cmd_start =>cmd_start,
+  cmd_count =>cmd_count);
+ 
+ --ad7606 port 
  u_ad7606_ctrl:entity work.ad7606_ctrl
  port map(
   clk       =>clk,
