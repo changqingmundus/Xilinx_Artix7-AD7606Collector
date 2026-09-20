@@ -53,9 +53,26 @@ architecture Behavioral of top_tb is
  signal uart_tx : std_logic;
  
  constant CLK_PERIOD: time:=20ns;
+ 
+ procedure uart_rx_byte(
+  constant data : in std_logic_vector(7 downto 0);
+    signal rx   : out std_logic) is
+   begin
+    rx<='0';
+    wait for 500ns;
+    
+    for i in 0 to 7 loop
+     rx<=data(i);
+     wait for 500ns;
+    end loop;
+    
+    rx<='1';
+    wait for 500ns;
+   end procedure;
+   
 begin
  clk<=not clk after CLK_PERIOD/2;
- 
+   
  uut:entity work.top
  port map(
   clk=>clk,
@@ -73,7 +90,18 @@ begin
   uart_tx=>uart_tx);
  process
   begin
-   for i in 0 to 2 loop
+   uart_rx<='1';
+   wait for 10us;
+   
+  for i in 0 to 2 loop
+   
+   wait for 50us;
+   uart_rx_byte(x"AA",uart_rx);
+   uart_rx_byte(x"01",uart_rx);
+   uart_rx_byte(x"00",uart_rx);
+   uart_rx_byte(x"08",uart_rx);
+   
+   wait for 5us;
    
    ad_busy<='0';
    ad_data<=x"0000";

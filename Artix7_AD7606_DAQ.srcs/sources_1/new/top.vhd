@@ -113,7 +113,8 @@ architecture Behavioral of top is
  --uart_tx define
  signal tx_active     :std_logic;
  signal tx_count      :std_logic_vector(7 downto 0);
- signal read_wait     : std_logic := '0';
+ signal read_wait     : integer range 0 to 2 := 0;
+ --signal read_wait     : std_logic := '0';
  signal byte_sel      : std_logic := '0';
  signal tx_data_reg   : std_logic_vector(7 downto 0);
  signal data_valid_seg: std_logic;
@@ -169,21 +170,21 @@ begin
   begin
    case ch_cnt is 
     when 0 =>
-     fifo_din<=x"1001";
+     fifo_din<=ad_ch1;
     when 1 =>
-     fifo_din<=x"2002";
+     fifo_din<=ad_ch2;
     when 2 =>
-     fifo_din<=x"3003";
+     fifo_din<=ad_ch3;
     when 3 =>
-     fifo_din<=x"4004";
+     fifo_din<=ad_ch4;
     when 4 =>
-     fifo_din<=x"5005";
+     fifo_din<=ad_ch5;
     when 5 =>
-     fifo_din<=x"6006";
+     fifo_din<=ad_ch6;
     when 6 =>
-     fifo_din<=x"7007";
+     fifo_din<=ad_ch7;
     when 7 =>
-     fifo_din<=x"8008";
+     fifo_din<=ad_ch8;
     when others =>
      fifo_din<=(others=>'0');
    end case;
@@ -198,16 +199,18 @@ begin
     if(cmd_valid = '1')then
      tx_active<='1';
      tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
-     read_wait<='0';
+     read_wait<=0;
     elsif(tx_active = '1')then
      if(tx_busy='0' and fifo_empty='0') then
-      if(read_wait = '0')then
+      if(read_wait = 0)then
        fifo_rd_en<= '1';
-       read_wait<= '1';
-      else
+       read_wait<=1;
+      elsif(read_wait = 1)then
+       read_wait<=2;
+      elsif(read_wait = 2)then
        tx_data_reg<=fifo_dout;
        data_valid_seg<= '1';
-       read_wait<='0';
+       read_wait<=0;
        if(tx_count = 1)then
         tx_count<=(others=>'0');
         tx_active<='0';
