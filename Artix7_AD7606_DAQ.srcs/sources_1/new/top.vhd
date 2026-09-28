@@ -170,21 +170,21 @@ begin
   begin
    case ch_cnt is 
     when 0 =>
-     fifo_din<=ad_ch1;
+     fifo_din<=x"1001";
     when 1 =>
-     fifo_din<=ad_ch2;
+     fifo_din<=x"2002";
     when 2 =>
-     fifo_din<=ad_ch3;
+     fifo_din<=x"3003";
     when 3 =>
-     fifo_din<=ad_ch4;
+     fifo_din<=x"4004";
     when 4 =>
-     fifo_din<=ad_ch5;
+     fifo_din<=x"5005";
     when 5 =>
-     fifo_din<=ad_ch6;
+     fifo_din<=x"6006";
     when 6 =>
-     fifo_din<=ad_ch7;
+     fifo_din<=x"7007";
     when 7 =>
-     fifo_din<=ad_ch8;
+     fifo_din<=x"8008";
     when others =>
      fifo_din<=(others=>'0');
    end case;
@@ -201,23 +201,22 @@ begin
      tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
      read_wait<=0;
     elsif(tx_active = '1')then
+     if(tx_count /= 0)then
      if(tx_busy='0' and fifo_empty='0') then
       if(read_wait = 0)then
        fifo_rd_en<= '1';
        read_wait<=1;
       elsif(read_wait = 1)then
-       read_wait<=2;
-      elsif(read_wait = 2)then
+       --read_wait<=2;
+      --elsif(read_wait = 2)then
        tx_data_reg<=fifo_dout;
        data_valid_seg<= '1';
        read_wait<=0;
-       if(tx_count = 1)then
-        tx_count<=(others=>'0');
-        tx_active<='0';
-       else 
-        tx_count<=tx_count - 1;
-       end if;
+       tx_count<=tx_count - 1;
       end if;
+     end if;
+    elsif(tx_busy = '0')then
+      tx_active<='0';
      end if;
     end if;
    end if;
@@ -227,7 +226,7 @@ begin
  u_uart_rx:entity work.uart_rx
   generic map(
   clk_freq=>50,
-  baud_rate=>2000000,
+  baud_rate=>115200,
   parity_on=>0,
   data_width=>8)
   port map(
@@ -310,7 +309,7 @@ begin
  u_uart_tx:entity work.uart_tx
   generic map(
   clk_freq=>50,
-  baud_rate=>2000000,
+  baud_rate=>115200,
   parity_on=>0,
   data_width=>8)
   port map(

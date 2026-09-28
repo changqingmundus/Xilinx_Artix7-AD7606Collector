@@ -114,28 +114,36 @@ begin
    ad_busy<='0';
    
    wait until ad_rd='0';
-   ad_data<=x"1001";
+   wait until ad_rd='1';
+   --ad_data<=x"1001";
    
    wait until ad_rd='0';
-   ad_data<=x"2002";
+   wait until ad_rd='1';
+   --ad_data<=x"2002";
    
    wait until ad_rd='0';
-   ad_data<=x"3003";
+   wait until ad_rd='1';
+   --ad_data<=x"3003";
    
    wait until ad_rd='0';
-   ad_data<=x"4004";
+   wait until ad_rd='1';
+   --ad_data<=x"4004";
    
    wait until ad_rd='0';
-   ad_data<=x"5005";
+   wait until ad_rd='1';
+   --ad_data<=x"5005";
    
    wait until ad_rd='0';
-   ad_data<=x"6006";
+   wait until ad_rd='1';
+   --ad_data<=x"6006";
    
    wait until ad_rd='0';
-   ad_data<=x"7007";
+   wait until ad_rd='1';
+   --ad_data<=x"7007";
    
    wait until ad_rd='0';
-   ad_data<=x"8008";
+   wait until ad_rd='1';
+   --ad_data<=x"8008";
    end loop;
   wait;
  end process;
