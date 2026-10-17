@@ -114,7 +114,6 @@ architecture Behavioral of top is
  signal tx_active     :std_logic;
  signal tx_count      :std_logic_vector(7 downto 0);
  signal read_wait     : integer range 0 to 2 := 0;
- --signal read_wait     : std_logic := '0';
  signal byte_sel      : std_logic := '0';
  signal tx_data_reg   : std_logic_vector(7 downto 0);
  signal data_valid_seg: std_logic;
@@ -123,6 +122,17 @@ architecture Behavioral of top is
 --led test
 signal cnt : integer range 0 to 50000000:=0;
 signal led_reg : std_logic := '0';
+
+component ila_0
+ port(clk:in std_logic;
+   probe0:in std_logic_vector(7 downto 0);
+   probe1:in std_logic_vector(7 downto 0);
+   probe2:in std_logic_vector(0 downto 0);
+   probe3:in std_logic_vector(0 downto 0));
+end component;
+
+signal probe2_vec:std_logic_vector(0 downto 0);
+signal probe3_vec:std_logic_vector(0 downto 0);
 
 begin
  fifo_srst <= not rst;
@@ -192,31 +202,38 @@ begin
      
  --fifo to uart_tx
  process(clk)
-  begin
-   if rising_edge(clk) then
-    fifo_rd_en<= '0';
-    data_valid_seg <= '0';
-    if(cmd_valid = '1')then
-     tx_active<='1';
-     tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
-     read_wait<=0;
-    elsif(tx_active = '1')then
-     if(tx_count /= 0)then
-     if(tx_busy='0' and fifo_empty='0') then
-      if(read_wait = 0)then
-       fifo_rd_en<= '1';
-       read_wait<=1;
-      elsif(read_wait = 1)then
-       --read_wait<=2;
-      --elsif(read_wait = 2)then
-       tx_data_reg<=fifo_dout;
-       data_valid_seg<= '1';
-       read_wait<=0;
-       tx_count<=tx_count - 1;
+begin
+    if rising_edge(clk) then
+        fifo_rd_en    <= '0';
+        data_valid_seg <= '0';
+      if rst = '0' then         --reset
+        tx_active <= '0';
+        tx_count  <= (others => '0');
+        read_wait <= 0;
+        tx_data_reg <= (others => '0');
+       else
+       if tx_active = '0' then
+        if(cmd_valid = '1')then
+         tx_active<='1';
+         tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
+         read_wait<=0;
+        end if;
+       else
+       if(tx_count /= 0)then
+        if(tx_busy='0' and fifo_empty='0') then
+         --if(read_wait = 0)then
+          fifo_rd_en<= '1';
+          --read_wait<=1;
+         --else
+          tx_data_reg<=fifo_dout;
+          data_valid_seg<= '1';
+          --read_wait<=0;
+          tx_count<=tx_count - 1;
+         --end if;
+        end if;
+        else
+         tx_active<='0';
       end if;
-     end if;
-    elsif(tx_busy = '0')then
-      tx_active<='0';
      end if;
     end if;
    end if;
@@ -226,7 +243,7 @@ begin
  u_uart_rx:entity work.uart_rx
   generic map(
   clk_freq=>50,
-  baud_rate=>115200,
+  baud_rate=>2000000,
   parity_on=>0,
   data_width=>8)
   port map(
@@ -309,7 +326,7 @@ begin
  u_uart_tx:entity work.uart_tx
   generic map(
   clk_freq=>50,
-  baud_rate=>115200,
+  baud_rate=>2000000,
   parity_on=>0,
   data_width=>8)
   port map(
@@ -319,5 +336,16 @@ begin
    data_valid=>data_valid_seg,
    tx_busy   =>tx_busy,
    tx        =>uart_tx);
+  
+  
+  probe2_vec(0)<=fifo_wr_en;
+  probe3_vec(0)<=tx_active;
+  u_ila_0:ila_0
+   port map(
+    clk=>clk,
+    probe0=>cmd_count,
+    probe1=>tx_data_reg,
+    probe2=>probe2_vec,
+    probe3=>probe3_vec);
 
 end Behavioral;

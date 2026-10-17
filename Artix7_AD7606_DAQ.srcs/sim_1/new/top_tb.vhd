@@ -38,19 +38,19 @@ end top_tb;
 architecture Behavioral of top_tb is
  signal clk        :std_logic :='0';
  
- signal ad_busy : std_logic := '0';
- signal ad_frst : std_logic := '0';
- signal ad_data : std_logic_vector(15 downto 0);
+ signal ad_busy    : std_logic := '0';
+ signal ad_frst    : std_logic := '0';
+ signal ad_data    : std_logic_vector(15 downto 0);
  signal ad_convstA : std_logic;
  signal ad_convstB : std_logic;
- signal ad_rst : std_logic;
- signal ad_cs : std_logic;
- signal ad_rd : std_logic;
- signal os : std_logic_vector(2 downto 0);
- signal ad_rage : std_logic;
+ signal ad_rst     : std_logic;
+ signal ad_cs      : std_logic;
+ signal ad_rd      : std_logic;
+ signal os         : std_logic_vector(2 downto 0);
+ signal ad_rage    : std_logic;
  
- signal uart_rx : std_logic := '1';
- signal uart_tx : std_logic;
+ signal uart_rx    : std_logic := '1';
+ signal uart_tx    : std_logic;
  
  constant CLK_PERIOD: time:=20ns;
  
@@ -99,7 +99,7 @@ begin
    uart_rx_byte(x"AA",uart_rx);
    uart_rx_byte(x"01",uart_rx);
    uart_rx_byte(x"00",uart_rx);
-   uart_rx_byte(x"08",uart_rx);
+   uart_rx_byte(x"02",uart_rx);
    
    wait for 5us;
    
