@@ -59,12 +59,12 @@ entity top is
 end top;
 
 architecture Behavioral of top is
- signal rst       : std_logic;
+ signal rst       :std_logic;
 
  --uart_rx define
- signal rx_data   : std_logic_vector(7 downto 0);
- signal rx_parity : std_logic;
- signal rx_done   : std_logic;
+ signal rx_data   :std_logic_vector(7 downto 0);
+ signal rx_parity :std_logic;
+ signal rx_done   :std_logic;
  
  --uart_rx_cmd
  signal cmd_valid :std_logic;
@@ -83,8 +83,7 @@ architecture Behavioral of top is
  signal ad_valid  :std_logic;
  
  --fifo define
- signal fifo_srst : std_logic;
- signal fifo_start:std_logic;
+ signal fifo_srst :std_logic;
  signal ch_cnt    :integer range 0 to 7;
  signal fifo_rd_en:std_logic;
  signal fifo_din  :std_logic_vector(15 downto 0);
@@ -94,6 +93,21 @@ architecture Behavioral of top is
  signal fifo_full :std_logic;
  signal fifo_rd   :std_logic; 
  
+ type fifo_tx_state_t is(FIFO_IDLE,
+                       FIFO_READ_WAIT,
+                       FIFO_WAIT_DOUT,
+                       FIFO_LOAD_DATA,
+                       FIFO_WAIT_BUSY_HIGH,
+                       FIFO_WAIT_BUSY_LOW,
+                       FIFO_GAP);
+ signal fifo_tx_state:fifo_tx_state_t:=FIFO_IDLE;
+ 
+ type wr_state_t is (WR_IDLE,
+                     WR_FLUSH, 
+                     WR_WRITE);
+ signal wr_state  : wr_state_t := WR_IDLE;
+ signal flush_cnt : integer range 0 to 15 := 0;
+
  --signal processor define
  signal data_A      : std_logic_vector(15 downto 0);
  signal data_B      : std_logic_vector(15 downto 0);
@@ -119,6 +133,9 @@ architecture Behavioral of top is
  signal data_valid_seg: std_logic;
  signal tx_busy       : std_logic;
  
+ constant GAP_CYCLES : integer := 50;
+ signal gap_cnt       : integer range 0 to GAP_CYCLES := 0;
+ 
 --led test
 signal cnt : integer range 0 to 50000000:=0;
 signal led_reg : std_logic := '0';
@@ -134,8 +151,10 @@ end component;
 signal probe2_vec:std_logic_vector(0 downto 0);
 signal probe3_vec:std_logic_vector(0 downto 0);
 
+
 begin
- fifo_srst <= not rst;
+ --fifo_srst <= not rst;
+ fifo_srst <= '1' when (rst = '0' or wr_state = WR_FLUSH) else '0';
  
  os<="000";
  ad_rage<='0';
@@ -144,8 +163,8 @@ begin
  process(clk)
   begin 
    if rising_edge(clk) then
-    if(cnt<100)then
-    --if(cnt<50000000)then
+    --if(cnt<100)then
+    if(cnt<50000000)then
      rst<='0';
      cnt<=cnt+1;
     else
@@ -153,92 +172,120 @@ begin
     end if;
    end if;
   end process;
+
  
  --ad_data to fifo
  process(clk)
   begin
    if rising_edge (clk)then
-    fifo_wr_en<='0';
-    if(ad_valid = '1')then
-     fifo_start<='1';
+    if(rst = '0')then
+     fifo_wr_en<='0';
      ch_cnt<=0;
-    elsif(fifo_start='1')then
-     if(fifo_full = '0')then
-      fifo_wr_en<='1';
-       if(ch_cnt=7) then
-        ch_cnt<=0;
-        fifo_start<='0';
-       else
-        ch_cnt<=ch_cnt+1;
-       end if;
-     end if;
-    end if;
-   end if;
- end process;
- 
- process(ch_cnt)
-  begin
-   case ch_cnt is 
-    when 0 =>
-     fifo_din<=x"1001";
-    when 1 =>
-     fifo_din<=x"2002";
-    when 2 =>
-     fifo_din<=x"3003";
-    when 3 =>
-     fifo_din<=x"4004";
-    when 4 =>
-     fifo_din<=x"5005";
-    when 5 =>
-     fifo_din<=x"6006";
-    when 6 =>
-     fifo_din<=x"7007";
-    when 7 =>
-     fifo_din<=x"8008";
-    when others =>
      fifo_din<=(others=>'0');
-   end case;
+     wr_state<=WR_IDLE;
+     flush_cnt<=0;
+    else
+     fifo_wr_en<='0';
+     case wr_state is
+      when WR_IDLE =>
+       if(ad_valid = '1' and tx_active = '0')then
+        flush_cnt<=0;
+        wr_state<=WR_FLUSH;
+       end if;
+      when WR_FLUSH  =>
+       if(flush_cnt = 8)then
+        ch_cnt<=0;
+        flush_cnt<=0;
+        wr_state<=WR_WRITE;
+       else
+        flush_cnt<=flush_cnt+1;
+       end if;
+      when WR_WRITE =>
+       if(fifo_full = '0')then
+        fifo_wr_en<='1';
+       case ch_cnt is
+        when 0 => fifo_din <= ad_ch1;
+        when 1 => fifo_din <= ad_ch2;
+        when 2 => fifo_din <= ad_ch3;
+        when 3 => fifo_din <= ad_ch4;
+        when 4 => fifo_din <= ad_ch5;
+        when 5 => fifo_din <= ad_ch6;
+        when 6 => fifo_din <= ad_ch7;
+        when 7 => fifo_din <= ad_ch8;
+        when others => fifo_din <= (others=>'0');
+       end case;
+        if(ch_cnt = 7)then
+         ch_cnt<=0;
+         wr_state<=WR_IDLE;
+        else
+         ch_cnt<=ch_cnt+1;
+        end if;
+       end if;
+      when others => wr_state <= WR_IDLE;
+     end case;
+   end if;
+  end if;
  end process;
      
  --fifo to uart_tx
  process(clk)
-begin
+  begin
     if rising_edge(clk) then
-        fifo_rd_en    <= '0';
-        data_valid_seg <= '0';
-      if rst = '0' then         --reset
-        tx_active <= '0';
-        tx_count  <= (others => '0');
-        read_wait <= 0;
-        tx_data_reg <= (others => '0');
-       else
-       if tx_active = '0' then
+     fifo_rd_en<='0';
+     data_valid_seg<='0';
+     if rst = '0' then         --reset
+      tx_active<= '0';
+      gap_cnt<=0;
+      read_wait<= 0;
+      tx_data_reg<=(others => '0');
+      tx_count<=(others => '0');
+      fifo_tx_state<=FIFO_IDLE;
+     else
+      case fifo_tx_state is
+       when FIFO_IDLE =>
+        tx_active<='0';
         if(cmd_valid = '1')then
          tx_active<='1';
-         tx_count <= std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count)) * 2, tx_count'length));
-         read_wait<=0;
+         tx_count<=std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count))*2,tx_count'length));
+         fifo_tx_state<=FIFO_READ_WAIT;
         end if;
-       else
-       if(tx_count /= 0)then
-        if(tx_busy='0' and fifo_empty='0') then
-         --if(read_wait = 0)then
-          fifo_rd_en<= '1';
-          --read_wait<=1;
-         --else
-          tx_data_reg<=fifo_dout;
-          data_valid_seg<= '1';
-          --read_wait<=0;
-          tx_count<=tx_count - 1;
-         --end if;
-        end if;
-        else
+       when FIFO_READ_WAIT =>
+        if(unsigned (tx_count) = 0)then
          tx_active<='0';
-      end if;
-     end if;
+         fifo_tx_state<=FIFO_IDLE;
+        elsif(tx_busy = '0' and fifo_empty = '0' and wr_state = WR_IDLE)then
+         fifo_rd_en<='1';
+         fifo_tx_state<=FIFO_WAIT_DOUT;
+        end if;
+       when FIFO_WAIT_DOUT =>
+        fifo_tx_state<=FIFO_LOAD_DATA;
+       when FIFO_LOAD_DATA =>
+        tx_data_reg<=fifo_dout;
+        data_valid_seg<='1';
+        tx_count<=std_logic_vector(unsigned(tx_count)-1);
+        fifo_tx_state<=FIFO_WAIT_BUSY_HIGH;
+       when FIFO_WAIT_BUSY_HIGH =>
+        if(tx_busy = '1')then
+         fifo_tx_state<=FIFO_WAIT_BUSY_LOW;
+        end if;
+       when FIFO_WAIT_BUSY_LOW =>
+        if(tx_busy = '0')then
+         gap_cnt<=0;
+         fifo_tx_state<=FIFO_GAP;
+        end if;
+       when FIFO_GAP =>
+        if(gap_cnt = GAP_CYCLES)then
+         fifo_tx_state<=FIFO_READ_WAIT;
+        else
+         gap_cnt<=gap_cnt+1;
+        end if;
+       when others =>
+        fifo_tx_state<=FIFO_IDLE;
+     end case;
     end if;
    end if;
   end process;
-  
+        
  --uart_rx port
  u_uart_rx:entity work.uart_rx
   generic map(
@@ -343,7 +390,7 @@ begin
   u_ila_0:ila_0
    port map(
     clk=>clk,
-    probe0=>cmd_count,
+    probe0=>fifo_dout,
     probe1=>tx_data_reg,
     probe2=>probe2_vec,
     probe3=>probe3_vec);
