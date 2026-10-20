@@ -58,6 +58,8 @@ entity top is
    uart_tx        :out std_logic);
 end top;
 
+
+
 architecture Behavioral of top is
  signal rst       :std_logic;
 
@@ -142,7 +144,7 @@ signal led_reg : std_logic := '0';
 
 component ila_0
  port(clk:in std_logic;
-   probe0:in std_logic_vector(7 downto 0);
+   probe0:in std_logic_vector(15 downto 0);
    probe1:in std_logic_vector(7 downto 0);
    probe2:in std_logic_vector(0 downto 0);
    probe3:in std_logic_vector(0 downto 0));
@@ -385,12 +387,12 @@ begin
    tx        =>uart_tx);
   
   
-  probe2_vec(0)<=fifo_wr_en;
+  probe2_vec(0)<=cmd_valid;
   probe3_vec(0)<=tx_active;
   u_ila_0:ila_0
    port map(
     clk=>clk,
-    probe0=>fifo_dout,
+    probe0=>ad_ch1,
     probe1=>tx_data_reg,
     probe2=>probe2_vec,
     probe3=>probe3_vec);

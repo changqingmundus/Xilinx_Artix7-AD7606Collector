@@ -69,6 +69,7 @@ architecture Behavioral of ad7606_ctrl is
   AD_RESET,
   IDLE,
   CONV,
+  WAIT_BUSY_HIGH,
   WAIT_BUSY_LOW,
   READ_DATA,
   READ_DONE);
@@ -122,13 +123,19 @@ begin
     when CONV =>
      if(cnt = 2)then
       cnt<=0;
-      state<=WAIT_BUSY_LOW;
+      state<=WAIT_BUSY_HIGH;
       convstA <= '1';
       convstB <= '1';
      else 
       cnt<=cnt+1;
       convstA <= '0';
       convstB <= '0';
+     end if;
+     
+    -- 确认转换开始
+    when WAIT_BUSY_HIGH =>
+     if(busy='1')then
+      state <= WAIT_BUSY_LOW;
      end if;
 
     -- 等轉換完成
