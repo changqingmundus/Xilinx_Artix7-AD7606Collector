@@ -96,12 +96,12 @@ architecture Behavioral of top is
  signal fifo_rd   :std_logic; 
  
  type fifo_tx_state_t is(FIFO_IDLE,
-                       FIFO_READ_WAIT,
-                       FIFO_WAIT_DOUT,
-                       FIFO_LOAD_DATA,
-                       FIFO_WAIT_BUSY_HIGH,
-                       FIFO_WAIT_BUSY_LOW,
-                       FIFO_GAP);
+                         FIFO_READ_WAIT,
+                         FIFO_WAIT_DOUT,
+                         FIFO_LOAD_DATA,
+                         FIFO_WAIT_BUSY_HIGH,
+                         FIFO_WAIT_BUSY_LOW,
+                         FIFO_GAP);
  signal fifo_tx_state:fifo_tx_state_t:=FIFO_IDLE;
  
  type wr_state_t is (WR_IDLE,
@@ -246,7 +246,7 @@ begin
       case fifo_tx_state is
        when FIFO_IDLE =>
         tx_active<='0';
-        if(cmd_valid = '1')then
+        if(cmd_valid = '1' and uart_data_en = '1')then
          tx_active<='1';
          tx_count<=std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count))*2,tx_count'length));
          fifo_tx_state<=FIFO_READ_WAIT;
@@ -309,7 +309,6 @@ begin
   clk       =>clk,
   rst       =>rst,
   rx_data   =>rx_data,
-  --rx_valid  =>rx_valid,
   rx_valid  =>rx_done,
   cmd_valid =>cmd_valid,
   cmd_start =>cmd_start,

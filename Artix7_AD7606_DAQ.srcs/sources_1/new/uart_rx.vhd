@@ -89,6 +89,7 @@ architecture Behavioral of uart_rx is
 begin
 
  rx_parity<=rx_parity_reg;
+ 
  --時鐘域同步實現
  process(clk,rst)
   begin

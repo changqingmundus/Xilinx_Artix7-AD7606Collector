@@ -2,10 +2,10 @@
 // Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
-// Date        : Tue Oct 20 10:54:39 2026
-// Host        : DESKTOP-LA4APUA running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode synth_stub {d:/Project
-//               Docs/VivadoPRJ/Xilinx_Artix7-AD7606Collector/Artix7_AD7606_DAQ.gen/sources_1/ip/ila_0/ila_0_stub.v}
+// Date        : Sun Oct 18 13:53:14 2026
+// Host        : EdmundAlexReid running 64-bit major release  (build 9200)
+// Command     : write_verilog -force -mode synth_stub -rename_top ila_0 -prefix
+//               ila_0_ ila_0_stub.v
 // Design      : ila_0
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7a35tifgg484-1L

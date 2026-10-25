@@ -35,12 +35,14 @@ use IEEE.NUMERIC_STD.ALL;
 entity uart_cmd_parser is
 --  Port ( );
  port(clk,rst :in std_logic;
-          rx_data :in std_logic_vector(7 downto 0);
-          rx_valid:in std_logic;
+      rx_data :in std_logic_vector(7 downto 0);
+      rx_valid:in std_logic;
+      ft232h_data_en:in std_logic;
           
-          cmd_valid:out std_logic;
-          cmd_start:out std_logic_vector(7 downto 0);
-          cmd_count:out std_logic_vector(7 downto 0));
+      cmd_valid:out std_logic;
+      uart_data_en:out std_logic;
+      cmd_start:out std_logic_vector(7 downto 0);
+      cmd_count:out std_logic_vector(7 downto 0));
 end uart_cmd_parser;
 
 architecture Behavioral of uart_cmd_parser is
@@ -59,6 +61,8 @@ begin
     if(rst = '0')then
      state<=IDLE;
      cmd_valid<='0';
+     uart_data_en<='0';
+     --ft232h_data_en<='0';
      cmd_start<=(others=>'0');
      cmd_count<=(others=>'0');
     else
@@ -79,11 +83,17 @@ begin
         start_reg<=rx_data;
         state<=COUNT;
        when COUNT =>
-        count_reg<=rx_data;
-        cmd_start<=start_reg;
-        cmd_count<=rx_data;
-        cmd_valid<='1';
-        state<=IDLE;
+        if(ft232h_data_en = '0')then
+         count_reg<=rx_data;
+         cmd_start<=start_reg;
+         cmd_count<=rx_data;
+         cmd_valid<='1';
+         uart_data_en<='1';
+        --ft232h_data_en<='0';
+         state<=IDLE;
+        else
+         state<=IDLE;
+        end if;
        when others =>
         state<=IDLE;
       end case;
