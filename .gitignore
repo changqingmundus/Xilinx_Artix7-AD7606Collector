@@ -1,20 +1,26 @@
-# Vivado generated files
+# Vivado generated directories
 *.cache/
+*.gen/
 *.hw/
 *.ip_user_files/
 *.runs/
 *.sim/
+.Xil/
 
-# Vivado temporary files
+# Vivado temporary and log files
 *.jou
 *.log
 *.str
 *.backup.log
+*.tmp
 
-# Simulation generated
+# Simulation generated files
 sim/
 xsim.dir/
+*.wdb
+*.vcd
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
