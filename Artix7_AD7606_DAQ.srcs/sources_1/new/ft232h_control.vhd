@@ -90,23 +90,25 @@ begin
      state<=STATE_READ_DATA;
     when STATE_READ_DATA =>
      --if(rd_cnt = rd_length)then
+     if(rxf = '1')then
       state<=STATE_END;
-    -- else
+     else
       --rd<='0';
       ft232h_data_out<=data;
      -- rd_cnt<=rd_cnt+1;
-    -- end if;
+     end if;
     when STATE_WRITE_START =>
      wr<='0';
      wr_cnt<=(others=>'0');
      state<=STATE_WRITE_DATA;
     when STATE_WRITE_DATA =>
-     if(wr_cnt = wr_length)then
+     --if(wr_cnt = wr_length)then
+     if(txe = '1')then
       wr<='1';
       state<=STATE_END;
      else
       data<=ft232h_data_in;
-      wr_cnt<=wr_cnt+1;
+      --wr_cnt<=wr_cnt+1;
      end if;
     when STATE_END =>
      rd<='1';

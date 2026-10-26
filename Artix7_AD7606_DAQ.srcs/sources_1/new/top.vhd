@@ -189,6 +189,8 @@ begin
  os<="000";
  ad_rage<='0';
  
+ siwu<='1';
+ 
  --poweron reset
  process(clk)
   begin 
@@ -442,7 +444,7 @@ begin
    ft232h_cmd_start=>ft232h_cmd_start,
    ft232h_cmd_count=>ft232h_cmd_count);
   
-  probe2_vec(0)<=ft232h_cmd_valid;
+  probe2_vec(0)<=ft232out_clk;
   probe3_vec(0)<=rxf;
   u_ila_0:ila_0
    port map(
