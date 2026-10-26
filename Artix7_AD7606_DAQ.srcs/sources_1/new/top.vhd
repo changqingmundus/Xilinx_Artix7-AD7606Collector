@@ -55,7 +55,19 @@ entity top is
    
    --UART interface
    uart_rx        :in std_logic;
-   uart_tx        :out std_logic);
+   uart_tx        :out std_logic;
+   
+   --FT232H interface
+   ft232out_clk   :in std_logic;
+   rxf            :in std_logic;
+   txe            :in std_logic;
+       
+   rd             :out std_logic;
+   wr             :out std_logic;
+   oe             :out std_logic;
+   siwu           :out std_logic;
+      
+   ft232h_data    :inout std_logic_vector(7 downto 0));
 end top;
 
 
@@ -127,8 +139,10 @@ architecture Behavioral of top is
  signal calcul_done : std_logic;
  
  --uart_tx define
- signal tx_active     :std_logic;
- signal tx_count      :std_logic_vector(7 downto 0);
+ signal uart_data_en  : std_logic;
+ 
+ signal tx_active     : std_logic;
+ signal tx_count      : std_logic_vector(7 downto 0);
  signal read_wait     : integer range 0 to 2 := 0;
  signal byte_sel      : std_logic := '0';
  signal tx_data_reg   : std_logic_vector(7 downto 0);
@@ -138,13 +152,27 @@ architecture Behavioral of top is
  constant GAP_CYCLES : integer := 50;
  signal gap_cnt       : integer range 0 to GAP_CYCLES := 0;
  
---led test
-signal cnt : integer range 0 to 50000000:=0;
-signal led_reg : std_logic := '0';
+ --FT232H define
+ signal ft232h_data_en: std_logic;
+ 
+ signal ft232h_data_in: std_logic_vector(7 downto 0);
+ signal ft232h_data_out:std_logic_vector(7 downto 0);
+ 
+ signal rd_length     : unsigned(15 downto 0);
+ signal wr_length     : unsigned(15 downto 0);
+ 
+ --FT232H_cmd
+ signal ft232h_cmd_valid:std_logic;
+ signal ft232h_cmd_start:std_logic_vector(7 downto 0);
+ signal ft232h_cmd_count:std_logic_vector(7 downto 0);
+ 
+ --led test
+ signal cnt : integer range 0 to 50000000:=0;
+ signal led_reg : std_logic := '0';
 
 component ila_0
  port(clk:in std_logic;
-   probe0:in std_logic_vector(15 downto 0);
+   probe0:in std_logic_vector(7 downto 0);
    probe1:in std_logic_vector(7 downto 0);
    probe2:in std_logic_vector(0 downto 0);
    probe3:in std_logic_vector(0 downto 0));
@@ -312,7 +340,9 @@ begin
   rx_valid  =>rx_done,
   cmd_valid =>cmd_valid,
   cmd_start =>cmd_start,
-  cmd_count =>cmd_count);
+  cmd_count =>cmd_count,
+  uart_data_en=>uart_data_en,
+  ft232h_data_en=>ft232h_data_en);
  
  --ad7606 port 
  u_ad7606_ctrl:entity work.ad7606_ctrl
@@ -341,42 +371,42 @@ begin
   
  fifo_generator_0_inst:entity work.fifo_generator_0
  port map(
-  clk=>clk,
-  srst=>fifo_srst,
-  din=>fifo_din,
-  wr_en=>fifo_wr_en,
-  rd_en=>fifo_rd_en,
-  dout=>fifo_dout,
-  full=>fifo_full,
-  empty=>fifo_empty,
-  almost_full=>open,
+  clk         =>clk,
+  srst        =>fifo_srst,
+  din         =>fifo_din,
+  wr_en       =>fifo_wr_en,
+  rd_en       =>fifo_rd_en,
+  dout        =>fifo_dout,
+  full        =>fifo_full,
+  empty       =>fifo_empty,
+  almost_full =>open,
   almost_empty=>open);
   
  u_signal_processor:entity work.signal_processor
   port map(
-   clk    =>clk,
-   rst    =>rst,
-   data_A=>data_A,
-   data_B=>data_B,
-   adc_valid=>adc_valid,
-   start=>start,
+   clk        =>clk,
+   rst        =>rst,
+   data_A     =>data_A,
+   data_B     =>data_B,
+   adc_valid  =>adc_valid,
+   start      =>start,
    sample_cnt_set=>sample_cnt_set,
    A_max_value=>A_max_value,
    A_min_value=>A_min_value,
    A_amplitude=>A_amplitude,
-   A_offset=>A_offset,
+   A_offset   =>A_offset,
    B_max_value=>B_max_value,
    B_min_value=>B_min_value,
    B_amplitude=>B_amplitude,
-   B_offset=>B_offset,
+   B_offset   =>B_offset,
    calcul_done=>calcul_done);
 
  u_uart_tx:entity work.uart_tx
   generic map(
-  clk_freq=>50,
-  baud_rate=>2000000,
-  parity_on=>0,
-  data_width=>8)
+  clk_freq   =>50,
+  baud_rate  =>2000000,
+  parity_on  =>0,
+  data_width =>8)
   port map(
    clk       =>clk,
    rst       =>rst,
@@ -385,13 +415,39 @@ begin
    tx_busy   =>tx_busy,
    tx        =>uart_tx);
   
+ u_ft232h_control:entity work.ft232h_control
+  port map(
+   clkout    =>ft232out_clk,
+   rst       =>rst,
+   rxf       =>rxf,
+   txe       =>txe,
+   ft232h_data_in=>ft232h_data_in,
+   rd_length =>rd_length,
+   wr_length =>wr_length,
+   rd        =>rd,
+   wr        =>wr,
+   oe        =>oe,
+   ft232h_data_out=>ft232h_data_out,
+   data      =>ft232h_data);
   
-  probe2_vec(0)<=cmd_valid;
-  probe3_vec(0)<=tx_active;
+ u_ft232h_cmd_parser:entity work.ft232h_cmd_parser
+  port map(
+   clk             =>clk,
+   rst             =>rst,
+   data_in         =>ft232h_data_in,
+   uart_data_en    =>uart_data_en,
+   rxf             =>rxf,
+   ft232h_data_en  =>ft232h_data_en,
+   ft232h_cmd_valid=>ft232h_cmd_valid,
+   ft232h_cmd_start=>ft232h_cmd_start,
+   ft232h_cmd_count=>ft232h_cmd_count);
+  
+  probe2_vec(0)<=ft232h_cmd_valid;
+  probe3_vec(0)<=rxf;
   u_ila_0:ila_0
    port map(
     clk=>clk,
-    probe0=>ad_ch1,
+    probe0=>ft232h_data_out,
     probe1=>tx_data_reg,
     probe2=>probe2_vec,
     probe3=>probe3_vec);

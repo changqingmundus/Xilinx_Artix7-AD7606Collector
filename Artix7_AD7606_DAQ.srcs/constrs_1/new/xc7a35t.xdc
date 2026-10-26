@@ -87,3 +87,34 @@ set_property PACKAGE_PIN T20 [get_ports uart_tx]
 set_property IOSTANDARD LVCMOS33 [get_ports uart_tx]
 
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
+
+
+##================================================
+## FT232H
+##================================================
+
+set_property PACKAGE_PIN A20 [get_ports rxf]
+set_property IOSTANDARD LVCMOS33 [get_ports rxf]
+set_property PACKAGE_PIN B20 [get_ports txe]
+set_property IOSTANDARD LVCMOS33 [get_ports txe]
+set_property PACKAGE_PIN E17 [get_ports rd]
+set_property IOSTANDARD LVCMOS33 [get_ports rd]
+set_property PACKAGE_PIN F16 [get_ports wr]
+set_property IOSTANDARD LVCMOS33 [get_ports wr]
+set_property PACKAGE_PIN C17 [get_ports siwu]
+set_property IOSTANDARD LVCMOS33 [get_ports siwu]
+set_property PACKAGE_PIN D17 [get_ports ft232out_clk]
+set_property IOSTANDARD LVCMOS33 [get_ports ft232out_clk]
+set_property PACKAGE_PIN F14 [get_ports oe]
+set_property IOSTANDARD LVCMOS33 [get_ports oe]
+
+##ft232h_data(7:0)
+set_property PACKAGE_PIN C13 [get_ports ft232h_data[0]]
+set_property PACKAGE_PIN B13 [get_ports ft232h_data[1]]
+set_property PACKAGE_PIN D14 [get_ports ft232h_data[2]]
+set_property PACKAGE_PIN D15 [get_ports ft232h_data[3]]
+set_property PACKAGE_PIN A18 [get_ports ft232h_data[4]]
+set_property PACKAGE_PIN A19 [get_ports ft232h_data[5]]
+set_property PACKAGE_PIN A15 [get_ports ft232h_data[6]]
+set_property PACKAGE_PIN A16 [get_ports ft232h_data[7]]
+set_property IOSTANDARD LVCMOS33 [get_ports ft232h_data[*]]

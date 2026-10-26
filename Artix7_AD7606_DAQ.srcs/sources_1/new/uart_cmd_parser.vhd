@@ -62,7 +62,6 @@ begin
      state<=IDLE;
      cmd_valid<='0';
      uart_data_en<='0';
-     --ft232h_data_en<='0';
      cmd_start<=(others=>'0');
      cmd_count<=(others=>'0');
     else

@@ -89,13 +89,13 @@ begin
      rd<='0';
      state<=STATE_READ_DATA;
     when STATE_READ_DATA =>
-     if(rd_cnt = rd_length)then
+     --if(rd_cnt = rd_length)then
       state<=STATE_END;
-     else
+    -- else
       --rd<='0';
       ft232h_data_out<=data;
-      rd_cnt<=rd_cnt+1;
-     end if;
+     -- rd_cnt<=rd_cnt+1;
+    -- end if;
     when STATE_WRITE_START =>
      wr<='0';
      wr_cnt<=(others=>'0');
