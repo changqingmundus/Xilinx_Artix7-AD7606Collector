@@ -77,8 +77,8 @@ begin
     when STATE_IDLE =>
      if(rxf = '0')then
       state<=STATE_READ;
-     elsif(txe = '0')then
-      state<=STATE_WRITE_START;
+     --elsif(txe = '0')then
+      --state<=STATE_WRITE_START;
      end if;
     when STATE_READ =>
      oe<='0';

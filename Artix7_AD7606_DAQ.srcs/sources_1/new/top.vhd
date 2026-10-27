@@ -449,7 +449,7 @@ begin
   u_ila_0:ila_0
    port map(
     clk=>clk,
-    probe0=>ft232h_data_out,
+    probe0=>ft232h_data,
     probe1=>tx_data_reg,
     probe2=>probe2_vec,
     probe3=>probe3_vec);
