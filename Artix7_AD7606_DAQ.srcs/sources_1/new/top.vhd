@@ -187,13 +187,16 @@ component ila_0
    probe0:in std_logic_vector(7 downto 0);
    probe1:in std_logic_vector(7 downto 0);
    probe2:in std_logic_vector(0 downto 0);
-   probe3:in std_logic_vector(0 downto 0));
+   probe3:in std_logic_vector(0 downto 0);
+   probe4:in std_logic_vector(0 downto 0));
 end component;
 
+signal oe_reg    : std_logic := '1';
+signal wr_reg    : std_logic := '1';
 signal rd_reg    : std_logic := '1';
 signal probe2_vec:std_logic_vector(0 downto 0);
 signal probe3_vec:std_logic_vector(0 downto 0);
-
+signal probe4_vec:std_logic_vector(0 downto 0);
 
 begin
  --fifo_srst <= not rst;
@@ -203,7 +206,9 @@ begin
  ad_rage<='0';
  
  siwu<='1';
- rd <= rd_reg;
+ oe<=oe_reg;
+ wr<=wr_reg;
+ rd<=rd_reg;
  data_rd_en<='1';
  
  rd_length<=x"0004";
@@ -213,8 +218,8 @@ begin
  process(clk)
   begin 
    if rising_edge(clk) then
-    --if(cnt<100)then
-    if(cnt<50000000)then
+    if(cnt<100)then
+    --if(cnt<50000000)then
      rst<='0';
      cnt<=cnt+1;
     else
@@ -305,7 +310,7 @@ begin
          fifo_tx_state<=FIFO_READ_WAIT;
         elsif(ft232h_cmd_valid = '1' and ft232h_data_en = '1')then 
          tx_usb_mode<='1';
-         tx_active<='1';
+         --tx_active<='1';
          tx_count<=std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count))*2,tx_count'length));
          fifo_tx_state<=FIFO_READ_WAIT;
         end if;
@@ -478,9 +483,9 @@ begin
    ft232h_data_in=>ft232h_data_in,
    rd_length =>rd_length,
    wr_length =>wr_length,
-   rd        =>rd,
-   wr        =>wr,
-   oe        =>oe,
+   rd        =>rd_reg,
+   wr        =>wr_reg,
+   oe        =>oe_reg,
    ft232h_data_out=>ft232h_data_out,
    data      =>ft232h_data);
   
@@ -490,20 +495,22 @@ begin
    rst             =>rst,
    data_in         =>ft232h_data_out,
    uart_data_en    =>uart_data_en,
-   rd              =>rd_reg,
+   rd_s_done       =>ft232h_rd_s_done,
    ft232h_data_en  =>ft232h_data_en,
    ft232h_cmd_valid=>ft232h_cmd_valid,
    ft232h_cmd_start=>ft232h_cmd_start,
    ft232h_cmd_count=>ft232h_cmd_count);
   
-  probe2_vec(0)<=ft232h_cmd_valid;
-  probe3_vec(0) <= rxf;
+  probe2_vec(0)<=ft232out_clk;
+  probe3_vec(0)<=tx_usb_mode;
+  probe4_vec(0)<=ft232h_cmd_valid;
   u_ila_0:ila_0
    port map(
     clk=>clk,
     probe0=>ft232h_data_out,
     probe1=>ft232h_data_in,
     probe2=>probe2_vec,
-    probe3=>probe3_vec);
+    probe3=>probe3_vec,
+    probe4=>probe4_vec);
 
 end Behavioral;

@@ -37,7 +37,7 @@ entity ft232h_cmd_parser is
       rst             :in std_logic;
       data_in         :in std_logic_vector(7 downto 0);
       uart_data_en    :in std_logic;
-      rd              :in std_logic;
+      rd_s_done       :in std_logic;
       
       ft232h_data_en  :out std_logic;
       ft232h_cmd_valid:out std_logic;
@@ -67,7 +67,7 @@ begin
      ft232h_cmd_count<=(others=>'0');
     else
      ft232h_cmd_valid<='0';
-     if(rd = '0')then
+     if(rd_s_done = '1')then
       case state is
        when IDLE =>
         if(data_in = x"BB")then

@@ -73,9 +73,9 @@ architecture Behavioral of ft232h_control is
 begin
 
  -- FPGA 仅在需要发送有效数据时驱动总线
- data <= ft232h_data_in when state = STATE_WRITE_START
-                        or   state = STATE_WRITE_DATA
+ data <= ft232h_data_in when state = STATE_WRITE_DATA
                         else (others => 'Z');
+ --data<=(others => 'Z');
  
  process(clkout,rst)
   begin
@@ -100,19 +100,17 @@ begin
      rd_cnt<=(others=>'0');
      state<=STATE_READ_START;
     when STATE_READ_START =>
-     --rd<='1';
+     rd<='0';
      state<=STATE_READ_DATA;
     when STATE_READ_DATA =>
-     if(rd_cnt = rd_length)then
-      if(rxf = '1')then
-       state<=STATE_END;
-      else
-       rd<='0';
-       ft232h_data_out<=data;
-       rd_s_done<='1';
-       --state<=STATE_END;
-       rd_cnt<=rd_cnt+1;
-      end if;
+     if(rxf = '1')then
+      state<=STATE_END;
+     elsif(rd_cnt = rd_length)then
+      state<=STATE_END;
+     else
+      ft232h_data_out<=data;
+      rd_s_done<='1';
+      rd_cnt<=rd_cnt+1;
      end if;
     when STATE_WRITE_START =>
      wr<='0';
@@ -123,9 +121,8 @@ begin
       if (wr_cnt = wr_length) then
        state<=STATE_END;
       else
-       wr<='0';
+       --data<=ft232h_data_in;
        wr_s_done<='1';
-       --state<=STATE_END;
        wr_cnt<=wr_cnt + 1;
       end if;
      else
