@@ -34,22 +34,27 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity ft232h_control is
 --  Port ( );
- port(clkout  :in std_logic;
-      rst     :in std_logic;
-      rxf     :in std_logic;
-      txe     :in std_logic;
+ port(clkout         : in std_logic;
+      rst            : in std_logic;
+      rxf            : in std_logic;
+      txe            : in std_logic;
       
-      ft232h_data_in : in  std_logic_vector(7 downto 0);
+      data_rd_en     : in std_logic;
+      data_wr_en     : in std_logic;
+      ft232h_data_in : in std_logic_vector(7 downto 0);
        
-      rd_length:in unsigned(15 downto 0);
-      wr_length:in unsigned(15 downto 0);
+      rd_length      : in unsigned(15 downto 0);
+      wr_length      : in unsigned(15 downto 0);
       
-      rd      :out std_logic;
-      wr      :out std_logic;
-      oe      :out std_logic;
+      rd_s_done      : out std_logic;
+      wr_s_done      : out std_logic;
+      
+      rd             : out std_logic;
+      wr             : out std_logic;
+      oe             : out std_logic;
       
       ft232h_data_out: out std_logic_vector(7 downto 0);
-      data    :inout std_logic_vector(7 downto 0));
+      data           : inout std_logic_vector(7 downto 0));
 end ft232h_control;
 
 architecture Behavioral of ft232h_control is
@@ -66,49 +71,65 @@ architecture Behavioral of ft232h_control is
  signal wr_cnt: unsigned(15 downto 0);
  
 begin
+
+ -- FPGA 仅在需要发送有效数据时驱动总线
+ data <= ft232h_data_in when state = STATE_WRITE_START
+                        or   state = STATE_WRITE_DATA
+                        else (others => 'Z');
+ 
  process(clkout,rst)
   begin
   if(rst = '0')then
    rd<='1';
    wr<='1';
    oe<='1';
+   rd_s_done<='0';
+   wr_s_done<='0';
   elsif(clkout'event and clkout = '1')then
+   rd_s_done<='0';
+   wr_s_done<='0';
    case state is
     when STATE_IDLE =>
-     if(rxf = '0')then
+     if(data_rd_en = '1' and rxf = '0')then
       state<=STATE_READ;
-     --elsif(txe = '0')then
-      --state<=STATE_WRITE_START;
+     elsif(data_wr_en = '1' and txe = '0')then
+      state<=STATE_WRITE_START;
      end if;
     when STATE_READ =>
      oe<='0';
-     --rd<='1';
      rd_cnt<=(others=>'0');
      state<=STATE_READ_START;
     when STATE_READ_START =>
-     rd<='0';
+     --rd<='1';
      state<=STATE_READ_DATA;
     when STATE_READ_DATA =>
-     --if(rd_cnt = rd_length)then
-     if(rxf = '1')then
-      state<=STATE_END;
-     else
-      --rd<='0';
-      ft232h_data_out<=data;
-     -- rd_cnt<=rd_cnt+1;
+     if(rd_cnt = rd_length)then
+      if(rxf = '1')then
+       state<=STATE_END;
+      else
+       rd<='0';
+       ft232h_data_out<=data;
+       rd_s_done<='1';
+       --state<=STATE_END;
+       rd_cnt<=rd_cnt+1;
+      end if;
      end if;
     when STATE_WRITE_START =>
      wr<='0';
      wr_cnt<=(others=>'0');
      state<=STATE_WRITE_DATA;
     when STATE_WRITE_DATA =>
-     --if(wr_cnt = wr_length)then
-     if(txe = '1')then
-      wr<='1';
-      state<=STATE_END;
+     if (txe = '0') then
+      if (wr_cnt = wr_length) then
+       state<=STATE_END;
+      else
+       wr<='0';
+       wr_s_done<='1';
+       --state<=STATE_END;
+       wr_cnt<=wr_cnt + 1;
+      end if;
      else
-      data<=ft232h_data_in;
-      --wr_cnt<=wr_cnt+1;
+       state<=STATE_END;
      end if;
     when STATE_END =>
      rd<='1';
