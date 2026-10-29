@@ -547,8 +547,8 @@ begin
    dst_data        =>usb_dst_data);
    
    
-  probe2_vec(0)<=usb_src_ready;
-  probe3_vec(0)<=ft232h_wr_s_done;
+  probe2_vec(0)<=fifo_empty;
+  probe3_vec(0)<=fifo_rd_en;
   probe4_vec(0)<=ft232h_cmd_valid;
   u_ila_0:ila_0
    port map(
