@@ -118,6 +118,7 @@ architecture Behavioral of top is
                          FIFO_GAP,
                          
                          -- USB 状态
+                         FIFO_USB_WAIT_ACCEPT,
                          FIFO_USB_WAIT_DONE);
  signal fifo_tx_state:fifo_tx_state_t:=FIFO_IDLE;
  
@@ -175,6 +176,15 @@ architecture Behavioral of top is
  signal ft232h_cmd_start:std_logic_vector(7 downto 0);
  signal ft232h_cmd_count:std_logic_vector(7 downto 0);
  
+ --usb_cdc define
+ signal usb_src_valid : std_logic := '0';
+ signal usb_src_ready : std_logic;
+ signal usb_src_data  : std_logic_vector(7 downto 0) := (others => '0');
+
+ signal usb_dst_valid : std_logic;
+ signal usb_dst_ready : std_logic := '0';
+ signal usb_dst_data  : std_logic_vector(7 downto 0);
+ 
  --led test
  signal cnt         : integer range 0 to 50000000:=0;
  signal led_reg     : std_logic := '0';
@@ -211,15 +221,15 @@ begin
  rd<=rd_reg;
  data_rd_en<='1';
  
- rd_length<=x"0004";
+ rd_length<=x"0005";
  wr_length<=x"0010";
  
  --poweron reset
  process(clk)
   begin 
    if rising_edge(clk) then
-    if(cnt<100)then
-    --if(cnt<50000000)then
+    --if(cnt<100)then
+    if(cnt<50000000)then
      rst<='0';
      cnt<=cnt+1;
     else
@@ -288,7 +298,6 @@ begin
     if rising_edge(clk) then
      fifo_rd_en<='0';
      data_valid_seg<='0';
-     data_wr_en<='0';
      if rst = '0' then         --reset
       tx_active<= '0';
       gap_cnt<=0;
@@ -296,11 +305,13 @@ begin
       tx_data_reg<=(others => '0');
       tx_count<=(others => '0');
       
+      data_wr_en<='0';
       ft232h_data_in<=(others => '0');
       tx_usb_mode<='0';
       fifo_tx_state<=FIFO_IDLE;
      else
       case fifo_tx_state is
+      
        when FIFO_IDLE =>
         tx_active<='0';
         if(cmd_valid = '1' and uart_data_en = '1')then
@@ -311,13 +322,16 @@ begin
         elsif(ft232h_cmd_valid = '1' and ft232h_data_en = '1')then 
          tx_usb_mode<='1';
          --tx_active<='1';
-         tx_count<=std_logic_vector(to_unsigned(to_integer(unsigned(cmd_count))*2,tx_count'length));
+         tx_count<=std_logic_vector(to_unsigned(to_integer(unsigned(ft232h_cmd_count))*2,tx_count'length));
          fifo_tx_state<=FIFO_READ_WAIT;
         end if;
+        
        when FIFO_READ_WAIT =>
         if(unsigned (tx_count) = 0)then
          tx_active<='0';
          fifo_tx_state<=FIFO_IDLE;
+         
+         data_wr_en<='0';
         elsif(fifo_empty = '0' and wr_state = WR_IDLE)then
          if(tx_usb_mode = '0')then
           if(tx_busy = '0')then
@@ -333,6 +347,7 @@ begin
        -- 等待 FIFO 输出数据
        when FIFO_WAIT_DOUT =>
         fifo_tx_state<=FIFO_LOAD_DATA;
+        
        when FIFO_LOAD_DATA =>
         if(tx_usb_mode = '0')then
          tx_data_reg<=fifo_dout;
@@ -340,27 +355,40 @@ begin
          tx_count<=std_logic_vector(unsigned(tx_count)-1);
          fifo_tx_state<=FIFO_WAIT_BUSY_HIGH;
         else
-         ft232h_data_in<=fifo_dout;
-         data_wr_en<='1';
-         fifo_tx_state<=FIFO_USB_WAIT_DONE;
+         if(usb_src_ready = '1')then
+          usb_src_data<=fifo_dout;
+          usb_src_valid<='1';
+          --data_wr_en<='1';
+          fifo_tx_state<=FIFO_USB_WAIT_ACCEPT;
+         end if;
         end if;
+        
        when FIFO_WAIT_BUSY_HIGH =>
         if(tx_busy = '1')then
          fifo_tx_state<=FIFO_WAIT_BUSY_LOW;
         end if;
+        
        when FIFO_WAIT_BUSY_LOW =>
         if(tx_busy = '0')then
          gap_cnt<=0;
          fifo_tx_state<=FIFO_GAP;
         end if;
+        
        when FIFO_GAP =>
         if(gap_cnt = GAP_CYCLES)then
          fifo_tx_state<=FIFO_READ_WAIT;
         else
          gap_cnt<=gap_cnt+1;
         end if;
+        
+       when FIFO_USB_WAIT_ACCEPT =>
+        if(usb_src_ready = '0')then
+         usb_src_valid<='0';
+         fifo_tx_state<=FIFO_USB_WAIT_DONE;
+        end if;
+        
        when FIFO_USB_WAIT_DONE =>
-        if(ft232h_wr_s_done = '1')then
+        if(usb_src_ready = '1')then
          tx_count<=std_logic_vector(unsigned(tx_count) - 1);
          fifo_tx_state<=FIFO_READ_WAIT;
         end if;
@@ -487,11 +515,14 @@ begin
    wr        =>wr_reg,
    oe        =>oe_reg,
    ft232h_data_out=>ft232h_data_out,
-   data      =>ft232h_data);
+   data      =>ft232h_data,
+   usb_data_valid=>usb_dst_valid,
+   usb_data      =>usb_dst_data,
+   usb_data_ready=>usb_dst_ready);
   
  u_ft232h_cmd_parser:entity work.ft232h_cmd_parser
   port map(
-   clk             =>clk,
+   clk             =>ft232out_clk,
    rst             =>rst,
    data_in         =>ft232h_data_out,
    uart_data_en    =>uart_data_en,
@@ -500,15 +531,30 @@ begin
    ft232h_cmd_valid=>ft232h_cmd_valid,
    ft232h_cmd_start=>ft232h_cmd_start,
    ft232h_cmd_count=>ft232h_cmd_count);
-  
-  probe2_vec(0)<=ft232out_clk;
-  probe3_vec(0)<=tx_usb_mode;
+   
+ u_usb_cdc:entity work.usb_cdc_handshake
+  port map(
+   src_clk         =>clk,
+   src_rst         =>rst,
+   src_valid       =>usb_src_valid,
+   src_data        =>usb_src_data,
+   src_ready       =>usb_src_ready,
+   
+   dst_clk         =>ft232out_clk,          
+   dst_rst         =>rst,      
+   dst_ready       =>usb_dst_ready,
+   dst_valid       =>usb_dst_valid, 
+   dst_data        =>usb_dst_data);
+   
+   
+  probe2_vec(0)<=usb_src_ready;
+  probe3_vec(0)<=ft232h_wr_s_done;
   probe4_vec(0)<=ft232h_cmd_valid;
   u_ila_0:ila_0
    port map(
     clk=>clk,
-    probe0=>ft232h_data_out,
-    probe1=>ft232h_data_in,
+    probe0=>fifo_dout,
+    probe1=>ft232h_cmd_start,
     probe2=>probe2_vec,
     probe3=>probe3_vec,
     probe4=>probe4_vec);

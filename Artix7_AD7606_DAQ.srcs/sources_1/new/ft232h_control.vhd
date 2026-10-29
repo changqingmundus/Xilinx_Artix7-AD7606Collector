@@ -54,7 +54,12 @@ entity ft232h_control is
       oe             : out std_logic;
       
       ft232h_data_out: out std_logic_vector(7 downto 0);
-      data           : inout std_logic_vector(7 downto 0));
+      data           : inout std_logic_vector(7 downto 0);
+      
+      -- USB CDC handshake
+      usb_data_valid : in std_logic;
+      usb_data       : in std_logic_vector(7 downto 0);
+      usb_data_ready : out std_logic);
 end ft232h_control;
 
 architecture Behavioral of ft232h_control is
@@ -70,12 +75,18 @@ architecture Behavioral of ft232h_control is
  signal rd_cnt: unsigned(15 downto 0);
  signal wr_cnt: unsigned(15 downto 0);
  
+ signal usb_write_active   : std_logic := '0';
+ signal usb_data_ready_reg : std_logic := '0';
+ 
 begin
 
- -- FPGA 仅在需要发送有效数据时驱动总线
- data <= ft232h_data_in when state = STATE_WRITE_DATA
-                        else (others => 'Z');
- --data<=(others => 'Z');
+ usb_data_ready <= usb_data_ready_reg;
+
+ -- Select the data source for the FT232H bus.
+ data <= usb_data when
+        state = STATE_WRITE_DATA and usb_write_active = '1'
+        --else ft232h_data_in when state = STATE_WRITE_DATA
+        else (others => 'Z');
  
  process(clkout,rst)
   begin
@@ -88,20 +99,26 @@ begin
   elsif(clkout'event and clkout = '1')then
    rd_s_done<='0';
    wr_s_done<='0';
+   usb_data_ready_reg<='0';
    case state is
+   
     when STATE_IDLE =>
      if(data_rd_en = '1' and rxf = '0')then
       state<=STATE_READ;
-     elsif(data_wr_en = '1' and txe = '0')then
-      state<=STATE_WRITE_START;
+     elsif(usb_data_valid = '1' and txe = '0')then
+      usb_write_active<='1';
+      state<=STATE_WRITE_DATA;
      end if;
+     
     when STATE_READ =>
      oe<='0';
      rd_cnt<=(others=>'0');
      state<=STATE_READ_START;
+     
     when STATE_READ_START =>
      rd<='0';
      state<=STATE_READ_DATA;
+     
     when STATE_READ_DATA =>
      if(rxf = '1')then
       state<=STATE_END;
@@ -112,29 +129,37 @@ begin
       rd_s_done<='1';
       rd_cnt<=rd_cnt+1;
      end if;
+     
     when STATE_WRITE_START =>
-     wr<='0';
+     wr<='1';
      wr_cnt<=(others=>'0');
      state<=STATE_WRITE_DATA;
+   
     when STATE_WRITE_DATA =>
-     if (txe = '0') then
-      if (wr_cnt = wr_length) then
-       state<=STATE_END;
-      else
-       --data<=ft232h_data_in;
-       wr_s_done<='1';
-       wr_cnt<=wr_cnt + 1;
-      end if;
-     else
+     wr<='0';
+     --if (txe = '0') then
+      state<=STATE_END;
+      --if (wr_cnt = wr_length) then
+       if(usb_write_active = '1')then
+        usb_data_ready_reg<='1';
+      --else
+       --wr_s_done<='1';
+       --wr_cnt<=wr_cnt + 1;
+      --end if;
+       --end if;
+     --else
        state<=STATE_END;
      end if;
+     
     when STATE_END =>
      rd<='1';
      wr<='1';
      oe<='1';
      state<=STATE_IDLE;
+     
     when others =>
      state<=STATE_IDLE;
+     
    end case;
   end if;
  end process;
