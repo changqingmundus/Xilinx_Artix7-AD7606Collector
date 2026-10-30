@@ -65,7 +65,7 @@ begin
  src_ready<='1' when req = ack_sync2 else '0';
  
  dst_data<=data_hold;
- dst_valid<='1' when req/= ack else '0';
+ dst_valid<='1' when req_sync2/= ack else '0';
  
  -- Synchronize request into 60 MHz domain
  process(dst_clk, dst_rst)
