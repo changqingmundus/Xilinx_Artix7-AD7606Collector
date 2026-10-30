@@ -344,9 +344,9 @@ begin
       tx_count<=(others => '0');
       
       data_wr_en<='0';
-      ft232h_data_in<=(others => '0');
+      --ft232h_data_in<=(others => '0');
       tx_usb_mode<='0';
-      usb_stream_active<='0';
+      --usb_stream_active<='0';
       fifo_tx_state<=FIFO_IDLE;
      else
       case fifo_tx_state is
@@ -491,7 +491,7 @@ begin
             afifo_usb_fsm <= AFIFO_USB_IDLE;
             usb_stream_active <= '0';
             ft232h_data_in <= (others => '0');
-
+            usb_dst_valid <= '0';
         else
 
             if usb_stream_stop = '1' then
@@ -501,12 +501,14 @@ begin
             case afifo_usb_fsm is
 
                 when AFIFO_USB_IDLE =>
-                    if usb_stream_start = '1' then
+                  usb_dst_valid <= '0';
+                    if ft232h_cmd_valid = '1' then
                         usb_stream_active <= '1';
                         afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
                     end if;
 
                 when AFIFO_USB_READ_WAIT =>
+                  usb_dst_valid <= '0';
                     if usb_stream_active = '0' then
                         afifo_usb_fsm <= AFIFO_USB_IDLE;
 
@@ -521,16 +523,19 @@ begin
 
                 when AFIFO_USB_WRITE =>
                     -- 将 FIFO 数据交给 FT232H 控制模块
+                     usb_dst_valid <= '1';
                     ft232h_data_in <= afifo_dout;
                     afifo_usb_fsm <= AFIFO_USB_WAIT_DONE;
 
                 when AFIFO_USB_WAIT_DONE =>
                     -- 等待 FT232H 完成当前字节写入
                     if usb_dst_ready = '1' then
+                      usb_dst_valid <= '0';
                         afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
                     end if;
 
                 when others =>
+                  usb_dst_valid <= '0';
                     afifo_usb_fsm <= AFIFO_USB_IDLE;
 
             end case;
@@ -705,12 +710,12 @@ port map (
     rst      => fifo_srst);
    
    
-  probe2_vec(0)<=afifo_wr_en;
-  probe3_vec(0)<=afifo_full;
-  probe4_vec(0)<=ft232h_cmd_valid;
+  probe2_vec(0)<=afifo_rd_en;
+  probe3_vec(0)<=ft232h_cmd_valid;
+  probe4_vec(0)<=usb_stream_active;
   u_ila_0:ila_0
    port map(
-    clk=>clk,
+    clk=>ft232out_clk,
     probe0=>afifo_din,
     probe1=>afifo_dout,
     probe2=>probe2_vec,

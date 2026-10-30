@@ -127,8 +127,7 @@ begin
                 if data_rd_en = '1' and rxf = '0' then
                     state <= STATE_READ;
 
-                elsif usb_stream_active = '1'
-                      and usb_data_valid = '1' then
+                elsif usb_stream_active = '1' then
                     state <= STATE_WRITE_START;
                 end if;
 
@@ -157,8 +156,10 @@ begin
             -- USB WRITE: 保存当前数据
             ------------------------------------------------
             when STATE_WRITE_START =>
-                usb_data_reg <= usb_data;
+             if(usb_data_valid = '1')then
+                usb_data_reg <= ft232h_data_in;
                 state <= STATE_WRITE_WAIT;
+               end if;
 
             ------------------------------------------------
             -- 等待 FT232H 可以写入

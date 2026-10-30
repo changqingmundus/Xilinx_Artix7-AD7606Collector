@@ -65,7 +65,7 @@ begin
  src_ready<='1' when req = ack_sync2 else '0';
  
  dst_data<=data_hold;
- dst_valid<='1' when req_sync2/= ack else '0';
+ --dst_valid<='1' when req_sync2/= ack else '0';
  
  -- Synchronize request into 60 MHz domain
  process(dst_clk, dst_rst)
@@ -111,9 +111,9 @@ begin
    if(dst_rst = '0')then
     ack<='0';
    elsif rising_edge(dst_clk) then
-    if(req_sync2 /= ack and dst_ready = '1')then
+    --if(req_sync2 /= ack and dst_ready = '1')then
       ack<=req_sync2;
-    end if;
+    --end if;
    end if;
   end process;
 
