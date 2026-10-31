@@ -187,41 +187,43 @@ architecture Behavioral of top is
  signal usb_dst_ready : std_logic := '0';
  signal usb_dst_data  : std_logic_vector(7 downto 0);
  
- 
- 
+ --afifo write_data state
  type afifo_wr_state_type is (
     AFIFO_WR_IDLE,
+    AFIFO_WR_HEADER_1,
+    AFIFO_WR_HEADER_2,
+    AFIFO_WR_READ,
     AFIFO_WR_WAIT_DOUT,
-    AFIFO_WR_WRITE
-);
+    AFIFO_WR_LOAD,
+    AFIFO_WR_WRITE,
+    AFIFO_WR_CRC);
 
-signal afifo_wr_state : afifo_wr_state_type := AFIFO_WR_IDLE;
+ signal afifo_wr_state : afifo_wr_state_type := AFIFO_WR_IDLE;
+ 
+ signal frame_byte_cnt : integer range 0 to 15 := 0;
+ signal crc_reg        : std_logic_vector(7 downto 0) := (others => '0');
+ signal crc_next       : std_logic_vector(7 downto 0);
+ 
+ signal afifo_wr_en : std_logic := '0';
+ signal afifo_din   : std_logic_vector(7 downto 0) := (others => '0');
+ signal afifo_full  : std_logic;
 
-signal afifo_wr_en : std_logic := '0';
-signal afifo_din   : std_logic_vector(7 downto 0) := (others => '0');
-signal afifo_full  : std_logic;
+ --afifo read_data state
+ type afifo_usb_fsm_t is (
+     AFIFO_USB_IDLE,
+     AFIFO_USB_READ_WAIT,
+     AFIFO_USB_WAIT_DOUT,
+     AFIFO_USB_WRITE,
+     AFIFO_USB_WAIT_DONE
+ );
+ signal afifo_usb_fsm : afifo_usb_fsm_t;
 
- --============================================================
--- 异步FIFO读侧 -> FT232H USB 流发送状态机 (60 MHz 域)
---============================================================
+ signal afifo_rd_en   : std_logic := '0';
+ signal afifo_empty   : std_logic;
+ signal afifo_dout    : std_logic_vector(7 downto 0);
 
-type afifo_usb_fsm_t is (
-    AFIFO_USB_IDLE,
-    AFIFO_USB_READ_WAIT,
-    AFIFO_USB_WAIT_DOUT,
-    AFIFO_USB_WRITE,
-    AFIFO_USB_WAIT_DONE
-);
-signal afifo_usb_fsm : afifo_usb_fsm_t;
-
--- 异步FIFO读侧接口 (60 MHz 域)
-signal afifo_rd_en   : std_logic := '0';
-signal afifo_empty   : std_logic;
-signal afifo_dout    : std_logic_vector(7 downto 0);
-
--- 启动 / 状态
-signal usb_stream_start : std_logic := '0';   -- 单拍脉冲，启动流
-signal usb_stream_stop  : std_logic := '0';   -- 单拍脉冲，停止流
+ signal usb_stream_start : std_logic := '0';
+ signal usb_stream_stop  : std_logic := '0';
  
  --led test
  signal cnt         : integer range 0 to 50000000:=0;
@@ -230,21 +232,42 @@ signal usb_stream_stop  : std_logic := '0';   -- 单拍脉冲，停止流
  --tx mode
  signal tx_usb_mode : std_logic := '0';
  
-component ila_0
- port(clk:in std_logic;
-   probe0:in std_logic_vector(7 downto 0);
-   probe1:in std_logic_vector(7 downto 0);
-   probe2:in std_logic_vector(0 downto 0);
-   probe3:in std_logic_vector(0 downto 0);
-   probe4:in std_logic_vector(0 downto 0));
-end component;
+ component ila_0
+  port(clk:in std_logic;
+    probe0:in std_logic_vector(7 downto 0);
+    probe1:in std_logic_vector(7 downto 0);
+    probe2:in std_logic_vector(0 downto 0);
+    probe3:in std_logic_vector(0 downto 0);
+    probe4:in std_logic_vector(0 downto 0));
+ end component;
+ 
+ signal oe_reg    : std_logic := '1';
+ signal wr_reg    : std_logic := '1';
+ signal rd_reg    : std_logic := '1';
+ signal probe2_vec:std_logic_vector(0 downto 0);
+ signal probe3_vec:std_logic_vector(0 downto 0);
+ signal probe4_vec:std_logic_vector(0 downto 0);
 
-signal oe_reg    : std_logic := '1';
-signal wr_reg    : std_logic := '1';
-signal rd_reg    : std_logic := '1';
-signal probe2_vec:std_logic_vector(0 downto 0);
-signal probe3_vec:std_logic_vector(0 downto 0);
-signal probe4_vec:std_logic_vector(0 downto 0);
+
+function crc8_update(
+    crc  : std_logic_vector(7 downto 0);
+    data : std_logic_vector(7 downto 0)) 
+    
+    return std_logic_vector is
+    variable c : std_logic_vector(7 downto 0);
+ begin
+    c := crc xor data;
+
+    for i in 0 to 7 loop
+        if c(7) = '1' then
+            c := (c(6 downto 0) & '0') xor x"07";
+        else
+            c := c(6 downto 0) & '0';
+        end if;
+    end loop;
+
+    return c;
+ end function;
 
 begin
  --fifo_srst <= not rst;
@@ -441,107 +464,131 @@ begin
   
   
  process(clk)
-begin
-    if rising_edge(clk) then
+  begin
+   if rising_edge(clk) then
+    fifo_rd_en  <= '0';
+    afifo_wr_en <= '0';
+    if rst = '0' then
+      afifo_wr_state <= AFIFO_WR_IDLE;
+      afifo_din      <= (others => '0');
+      frame_byte_cnt <= 0;
+      crc_reg        <= (others => '0');
+     else
+      case afifo_wr_state is
+      
+        when AFIFO_WR_IDLE =>
+         if fifo_empty = '0' and afifo_full = '0' then
+          crc_reg        <= (others => '0');
+          frame_byte_cnt <= 0;
+          afifo_wr_state <= AFIFO_WR_HEADER_1;
+         end if;
 
-        fifo_rd_en <= '0';
-        afifo_wr_en <= '0';
-
-        if rst = '0' then
-            afifo_wr_state <= AFIFO_WR_IDLE;
-            afifo_din <= (others => '0');
-
-        else
-            case afifo_wr_state is
-
-                when AFIFO_WR_IDLE =>
-                    -- 原始 FIFO 有数据，且异步 FIFO 未满
-                    if fifo_empty = '0' and afifo_full = '0' then
-                        fifo_rd_en <= '1';
-                        afifo_wr_state <= AFIFO_WR_WAIT_DOUT;
-                    end if;
-
-                when AFIFO_WR_WAIT_DOUT =>
-                    -- 等待原始 FIFO Standard Read 输出
-                    afifo_wr_state <= AFIFO_WR_WRITE;
-
-                when AFIFO_WR_WRITE =>
-                    -- 这里才是真正的数据来源
-                    if afifo_full = '0' then
-                        afifo_din <= fifo_dout;
-                        afifo_wr_en <= '1';
-                        afifo_wr_state <= AFIFO_WR_IDLE;
-                    end if;
-
-                when others =>
-                    afifo_wr_state <= AFIFO_WR_IDLE;
-
-            end case;
-        end if;
-    end if;
-end process;
+        when AFIFO_WR_HEADER_1 =>  --header1 = "AB"
+         if afifo_full = '0' then
+          afifo_din      <= x"AB";  
+          afifo_wr_en    <= '1';
+          afifo_wr_state <= AFIFO_WR_HEADER_2;
+         end if;
+       
+        when AFIFO_WR_HEADER_2 =>  --header1 = "CD"
+         if afifo_full = '0' then
+          afifo_din      <= x"CD";
+          afifo_wr_en    <= '1';
+          afifo_wr_state <= AFIFO_WR_READ;
+         end if;
+       
+        when AFIFO_WR_READ =>
+         if fifo_empty = '0' and afifo_full = '0' then
+          fifo_rd_en     <= '1';
+          afifo_wr_state <= AFIFO_WR_WAIT_DOUT;
+         end if;
+       
+        when AFIFO_WR_WAIT_DOUT =>  --wait afifo data output
+            afifo_wr_state <= AFIFO_WR_LOAD;
+       
+        when AFIFO_WR_LOAD =>
+         afifo_din <= fifo_dout;
+         crc_reg   <= crc8_update(crc_reg, fifo_dout);
+         afifo_wr_state <= AFIFO_WR_WRITE;
+      
+        when AFIFO_WR_WRITE =>
+         if afifo_full = '0' then
+          afifo_wr_en <= '1';
+          if frame_byte_cnt = 15 then
+              afifo_wr_state <= AFIFO_WR_CRC;
+          else
+              frame_byte_cnt <= frame_byte_cnt + 1;
+              afifo_wr_state <= AFIFO_WR_READ;
+          end if;      
+         end if;
+       
+        when AFIFO_WR_CRC =>  --write crc data
+         if afifo_full = '0' then
+          afifo_din      <= crc_reg;
+          afifo_wr_en    <= '1';
+          afifo_wr_state <= AFIFO_WR_IDLE;
+         end if;
+       
+        when others =>
+         afifo_wr_state <= AFIFO_WR_IDLE;
+      
+       end case;
+      end if;
+     end if;
+    end process;
   
  process(ft232out_clk)
-begin
-    if rising_edge(ft232out_clk) then
+  begin
+   if rising_edge(ft232out_clk) then
+    afifo_rd_en <= '0';
+    if rst = '0' then
+     afifo_usb_fsm <= AFIFO_USB_IDLE;
+     usb_stream_active <= '0';
+     ft232h_data_in <= (others => '0');
+     usb_dst_valid <= '0';
+    else
+     case afifo_usb_fsm is
+      when AFIFO_USB_IDLE =>
+       usb_dst_valid <= '0';
+       usb_stream_active <= '0';
+       if ft232h_cmd_valid = '1' then
+        usb_stream_active <= '1';
+        afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
+       end if;
 
-        afifo_rd_en <= '0';
+      when AFIFO_USB_READ_WAIT =>
+       usb_dst_valid <= '0';
+       if usb_stream_stop = '1' then
+        usb_stream_active <= '0';
+        afifo_usb_fsm <= AFIFO_USB_IDLE;
+       elsif afifo_empty = '0' then
+        afifo_rd_en <= '1';
+        afifo_usb_fsm <= AFIFO_USB_WAIT_DOUT;
+       end if;
+       
+      when AFIFO_USB_WAIT_DOUT =>
+       afifo_usb_fsm <= AFIFO_USB_WRITE;
 
-        if rst = '0' then
-            afifo_usb_fsm <= AFIFO_USB_IDLE;
-            usb_stream_active <= '0';
-            ft232h_data_in <= (others => '0');
-            usb_dst_valid <= '0';
-        else
+      when AFIFO_USB_WRITE =>
+       ft232h_data_in <= afifo_dout;
+       usb_dst_valid <= '1';
+       afifo_usb_fsm <= AFIFO_USB_WAIT_DONE;
 
-            if usb_stream_stop = '1' then
-                usb_stream_active <= '0';
-            end if;
+      when AFIFO_USB_WAIT_DONE =>
+       if usb_dst_ready = '1' then
+        usb_dst_valid <= '0';
+        afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
+       end if;
 
-            case afifo_usb_fsm is
-
-                when AFIFO_USB_IDLE =>
-                  usb_dst_valid <= '0';
-                    if ft232h_cmd_valid = '1' then
-                        usb_stream_active <= '1';
-                        afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
-                    end if;
-
-                when AFIFO_USB_READ_WAIT =>
-                  usb_dst_valid <= '0';
-                    if usb_stream_active = '0' then
-                        afifo_usb_fsm <= AFIFO_USB_IDLE;
-
-                    elsif afifo_empty = '0' then
-                        afifo_rd_en <= '1';
-                        afifo_usb_fsm <= AFIFO_USB_WAIT_DOUT;
-                    end if;
-
-                when AFIFO_USB_WAIT_DOUT =>
-                    -- 等待 FIFO Standard Read 输出
-                    afifo_usb_fsm <= AFIFO_USB_WRITE;
-
-                when AFIFO_USB_WRITE =>
-                    -- 将 FIFO 数据交给 FT232H 控制模块
-                     usb_dst_valid <= '1';
-                    ft232h_data_in <= afifo_dout;
-                    afifo_usb_fsm <= AFIFO_USB_WAIT_DONE;
-
-                when AFIFO_USB_WAIT_DONE =>
-                    -- 等待 FT232H 完成当前字节写入
-                    if usb_dst_ready = '1' then
-                      usb_dst_valid <= '0';
-                        afifo_usb_fsm <= AFIFO_USB_READ_WAIT;
-                    end if;
-
-                when others =>
-                  usb_dst_valid <= '0';
-                    afifo_usb_fsm <= AFIFO_USB_IDLE;
-
-            end case;
-        end if;
+      when others =>
+       usb_dst_valid <= '0';
+       usb_stream_active <= '0';
+       afifo_usb_fsm <= AFIFO_USB_IDLE;
+           
+     end case;
     end if;
-end process;
+   end if;
+  end process;
    
         
  --uart_rx port
@@ -629,6 +676,7 @@ end process;
    B_offset   =>B_offset,
    calcul_done=>calcul_done);
 
+ --uart_tx port
  u_uart_tx:entity work.uart_tx
   generic map(
   clk_freq   =>50,
@@ -643,16 +691,17 @@ end process;
    tx_busy   =>tx_busy,
    tx        =>uart_tx);
   
+ --ft232h port
  u_ft232h_control:entity work.ft232h_control
   port map(
    clkout    =>ft232out_clk,
    rst       =>rst,
    rxf       =>rxf,
    txe       =>txe,
-   data_rd_en    =>data_rd_en,
-   data_wr_en    =>data_wr_en,
-   rd_s_done     =>ft232h_rd_s_done,
-   wr_s_done     =>ft232h_wr_s_done,
+   data_rd_en=>data_rd_en,
+   data_wr_en=>data_wr_en,
+   rd_s_done =>ft232h_rd_s_done,
+   wr_s_done =>ft232h_wr_s_done,
    ft232h_data_in=>ft232h_data_in,
    rd_length =>rd_length,
    wr_length =>wr_length,
@@ -660,7 +709,7 @@ end process;
    wr        =>wr_reg,
    oe        =>oe_reg,
    ft232h_data_out=>ft232h_data_out,
-   data      =>ft232h_data,
+   data          =>ft232h_data,
    usb_data_valid=>usb_dst_valid,
    usb_data      =>usb_dst_data,
    usb_data_ready=>usb_dst_ready,
@@ -707,7 +756,7 @@ port map (
     dout     => afifo_dout,        -- 本状态机使用
     empty    => afifo_empty,       -- 本状态机使用
 
-    rst      => fifo_srst);
+    rst      => fifo_srst);        --fifo reset '1'
    
    
   probe2_vec(0)<=afifo_rd_en;
@@ -715,8 +764,8 @@ port map (
   probe4_vec(0)<=usb_stream_active;
   u_ila_0:ila_0
    port map(
-    clk=>ft232out_clk,
-    probe0=>afifo_din,
+    clk=>clk,
+    probe0=>ft232h_data_in,
     probe1=>afifo_dout,
     probe2=>probe2_vec,
     probe3=>probe3_vec,
